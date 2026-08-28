@@ -1,0 +1,127 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Resource Control Policies (RCPs) for the organization.
+  RCPs enforce a data perimeter by restricting which identities can
+  access resources in member accounts — regardless of what the resource's
+  own policy says. They complement SCPs: SCPs restrict what identities
+  can DO; RCPs restrict who can ACCESS resources.
+
+Parameters:
+  OrganizationId:
+    Type: String
+    Description: AWS Organizations ID (e.g. o-r1nw3lkvjf)
+  ManagementAccountId:
+    Type: String
+    Description: Management account ID — excluded from RCP enforcement
+
+  ProjectPrefix:
+    Type: String
+    Default: Acme
+    Description: >
+      Prefix applied to RCP names visible in the console. Use PascalCase.
+
+  ProjectPrefixLower:
+    Type: String
+    Default: acme
+    Description: >
+      Lowercase version of ProjectPrefix. Must match lowercase of ProjectPrefix.
+
+Resources:
+
+  # ==============================================================================
+  # RCP: IDENTITY PERIMETER
+  # Enforces that only trusted identities (principals within this organization
+  # or AWS services acting on behalf of this organization) can access the
+  # following resources in member accounts:
+  #   - S3 buckets (artifacts, logs)
+  #   - DynamoDB tables (application state)
+  #   - SQS queues (messaging)
+  #   - Secrets Manager secrets (application credentials)
+  #   - KMS keys (encryption)
+  #   - ECR repositories (container images)
+  #   - CloudWatch Logs (observability)
+  #
+  # This policy is the foundation of the data perimeter. Even if a resource
+  # policy or IAM policy allows external access, this RCP overrides it and
+  # blocks any principal outside the organization.
+  #
+  # Exceptions:
+  #   - AWS services acting on behalf of this org (aws:PrincipalIsAWSService)
+  #   - The Management account (MasterAccountId parameter)
+  #   - Resources tagged dp:exclude:identity=true (for intentionally public
+  #     resources, e.g. a public S3 bucket for static assets)
+  #
+  # Applied to: Infrastructure OU, Workloads OU
+  # Security OU excluded — managed exclusively by Control Tower.
+  # ==============================================================================
+  IdentityPerimeterPolicy:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Name: !Sub '${ProjectPrefix}IdentityPerimeter'
+      Description: >
+        Enforces that only trusted identities within the organization can
+        access sensitive resources. Implements the identity data perimeter.
+      Type: RESOURCE_CONTROL_POLICY
+      TargetIds:
+        - !ImportValue InfrastructureOUId
+        - !ImportValue WorkloadsOUId
+      Content:
+        Version: '2012-10-17'
+        Statement:
+          # --------------------------------------------------------------------------
+          # Block access from identities outside the organization.
+          # Exception: AWS services acting on behalf of this org are allowed
+          # (e.g. CloudTrail writing to S3, Config reading resources).
+          # Resources tagged dp:exclude:identity=true are also excluded
+          # (for intentionally accessible resources like public S3 buckets).
+          # --------------------------------------------------------------------------
+          - Sid: EnforceOrganizationIdentities
+            Effect: Deny
+            Principal: '*'
+            Action:
+              - s3:*
+              - dynamodb:*
+              - sqs:*
+              - secretsmanager:*
+              - kms:*
+              - ecr:*
+              - logs:*
+            Resource: '*'
+            Condition:
+              StringNotEqualsIfExists:
+                aws:PrincipalOrgID: !Ref OrganizationId
+                aws:PrincipalAccount:
+                  - !Ref ManagementAccountId
+                aws:ResourceTag/dp:exclude:identity: 'true'
+              BoolIfExists:
+                aws:PrincipalIsAWSService: 'false'
+
+          # --------------------------------------------------------------------------
+          # Confused deputy protection.
+          # When an AWS service makes calls on behalf of a principal (e.g. Lambda
+          # invoking S3, EventBridge writing to DynamoDB), the source of the call must
+          # also be within this organization. This prevents attackers from using
+          # compromised AWS service roles to exfiltrate data to external accounts.
+          # --------------------------------------------------------------------------
+          - Sid: EnforceConfusedDeputyProtection
+            Effect: Deny
+            Principal: '*'
+            Action:
+              - s3:*
+              - dynamodb:*
+              - sqs:*
+              - secretsmanager:*
+              - kms:*
+              - ecr:*
+              - logs:*
+            Resource: '*'
+            Condition:
+              StringNotEqualsIfExists:
+                aws:SourceOrgID: !Ref OrganizationId
+                aws:SourceAccount:
+                  - !Ref ManagementAccountId
+                aws:ResourceTag/dp:exclude:identity: 'true'
+              'Null':
+                aws:SourceAccount: 'false'
+              Bool:
+                aws:PrincipalIsAWSService: 'true'

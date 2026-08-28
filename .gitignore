@@ -1,0 +1,29 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# AI Agents (only .kiro is accepted)
+.junie/
+.cursor/
+.cursorrules
+.github/copilot-instructions.md
+.augment/
+CLAUDE.md
+
+# AWS
+landing-zone-manifest.json
+
+# Temp
+*.log
+*.tmp

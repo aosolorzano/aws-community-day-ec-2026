@@ -1,0 +1,96 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Identity Center groups for the platform
+
+Parameters:
+  IdentityStoreId:
+    Type: String
+    Description: ID of the IAM Identity Center Identity Store (e.g. d-xxxxxxxxxx)
+
+  ProjectPrefix:
+    Type: String
+    Default: Acme
+    Description: >
+      Prefix applied to group display names. Use PascalCase.
+      Must match the prefix used in 1-permission-sets.yaml.
+
+  ProjectPrefixLower:
+    Type: String
+    Default: acme
+    Description: >
+      Lowercase version of ProjectPrefix, used for stack export names.
+      Must match lowercase of ProjectPrefix.
+
+Resources:
+
+  # ==============================================================================
+  # INFRASTRUCTURE ADMINS
+  # Owns the Network account. Responsible for Transit Gateway, VPCs, VPN,
+  # and DNS.
+  # ==============================================================================
+  InfrastructureAdminsGroup:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      IdentityStoreId: !Ref IdentityStoreId
+      DisplayName: !Sub '${ProjectPrefix}-Infrastructure-Admins'
+      Description: Infrastructure engineers - own the Network account
+
+  # ==============================================================================
+  # PLATFORM ADMINS
+  # Owns the Shared Services account. Responsible for shared platform services,
+  # CI/CD pipelines, and DevOps tooling.
+  # ==============================================================================
+  PlatformAdminsGroup:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      IdentityStoreId: !Ref IdentityStoreId
+      DisplayName: !Sub '${ProjectPrefix}-Platform-Admins'
+      Description: Platform engineers - own the Shared Services account
+
+  # ==============================================================================
+  # DEVELOPERS
+  # Full access in Dev, read-only in Prod. Prevents accidental production changes
+  # while allowing full development autonomy.
+  # ==============================================================================
+  DevelopersGroup:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      IdentityStoreId: !Ref IdentityStoreId
+      DisplayName: !Sub '${ProjectPrefix}-Developers'
+      Description: Application developers - full access in Dev, read-only in Prod
+
+  # ==============================================================================
+  # OPERATIONS
+  # Full access in Prod, read-only in Dev. Responsible for operating services
+  # in production.
+  # ==============================================================================
+  OperationsGroup:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      IdentityStoreId: !Ref IdentityStoreId
+      DisplayName: !Sub '${ProjectPrefix}-Operations'
+      Description: Operations team - full access in Prod, read-only in Dev
+
+Outputs:
+  InfrastructureAdminsGroupId:
+    Description: Group ID of Infrastructure-Admins
+    Value: !GetAtt InfrastructureAdminsGroup.GroupId
+    Export:
+      Name: !Sub '${ProjectPrefixLower}-identity-InfrastructureAdminsGroupId'
+
+  PlatformAdminsGroupId:
+    Description: Group ID of Platform-Admins
+    Value: !GetAtt PlatformAdminsGroup.GroupId
+    Export:
+      Name: !Sub '${ProjectPrefixLower}-identity-PlatformAdminsGroupId'
+
+  DevelopersGroupId:
+    Description: Group ID of Developers
+    Value: !GetAtt DevelopersGroup.GroupId
+    Export:
+      Name: !Sub '${ProjectPrefixLower}-identity-DevelopersGroupId'
+
+  OperationsGroupId:
+    Description: Group ID of Operations
+    Value: !GetAtt OperationsGroup.GroupId
+    Export:
+      Name: !Sub '${ProjectPrefixLower}-identity-OperationsGroupId'

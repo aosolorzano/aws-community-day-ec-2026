@@ -1,0 +1,304 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS accounts via Control Tower Account Factory
+
+Parameters:
+  AccountFactoryProductId:
+    Type: String
+    Description: Product ID for AWS Control Tower Account Factory
+  AccountFactoryArtifactId:
+    Type: String
+    Description: Active Provisioning Artifact ID for Account Factory
+
+  # Network account
+  NetworkAccountEmail:
+    Type: String
+    Default: your-email+aws-network@domain.com
+  NetworkUserEmail:
+    Type: String
+    Default: sheldon.cooper@example.com
+  NetworkUserFirstName:
+    Type: String
+    Default: Sheldon
+  NetworkUserLastName:
+    Type: String
+    Default: Cooper
+
+  # Shared Services account
+  SharedServicesAccountEmail:
+    Type: String
+    Default: your-email+aws-shared@domain.com
+  SharedServicesUserEmail:
+    Type: String
+    Default: leonard.hofstadter@example.com
+  SharedServicesUserFirstName:
+    Type: String
+    Default: Leonard
+  SharedServicesUserLastName:
+    Type: String
+    Default: Hofstadter
+
+  # Dev account
+  DevAccountEmail:
+    Type: String
+    Default: your-email+aws-dev@domain.com
+  DevUserEmail:
+    Type: String
+    Default: howard.wolowitz@example.com
+  DevUserFirstName:
+    Type: String
+    Default: Howard
+  DevUserLastName:
+    Type: String
+    Default: Wolowitz
+
+  # ==============================================================================
+  # Uncomment the following parameters when the Test account is required.
+  # ==============================================================================
+  # TestAccountEmail:
+  #   Type: String
+  #   Default: your-email+aws-test@domain.com
+  # TestUserEmail:
+  #   Type: String
+  #   Default: bernadette.rostenkowski@example.com
+  # TestUserFirstName:
+  #   Type: String
+  #   Default: Bernadette
+  # TestUserLastName:
+  #   Type: String
+  #   Default: Rostenkowski
+
+  # ==============================================================================
+  # Uncomment the following parameters when the Stage account is required.
+  # ==============================================================================
+  # StageAccountEmail:
+  #   Type: String
+  #   Default: your-email+aws-stage@domain.com
+  # StageUserEmail:
+  #   Type: String
+  #   Default: amy.farrah-fowler@example.com
+  # StageUserFirstName:
+  #   Type: String
+  #   Default: Amy
+  # StageUserLastName:
+  #   Type: String
+  #   Default: Farrah Fowler
+
+  # Prod account
+  ProdAccountEmail:
+    Type: String
+    Default: your-email+aws-prod@domain.com
+  ProdUserEmail:
+    Type: String
+    Default: raj.koothrappali@example.com
+  ProdUserFirstName:
+    Type: String
+    Default: Rajesh
+  ProdUserLastName:
+    Type: String
+    Default: Koothrappali
+
+  # ==============================================================================
+  # Uncomment the following parameters when the Sandbox account is required.
+  # ==============================================================================
+  # SandboxAccountEmail:
+  #   Type: String
+  #   Default: your-email+aws-sandbox@domain.com
+  # SandboxUserEmail:
+  #   Type: String
+  #   Default: penny.hofstadter@example.com
+  # SandboxUserFirstName:
+  #   Type: String
+  #   Default: Penny
+  # SandboxUserLastName:
+  #   Type: String
+  #   Default: Hofstadter
+
+Resources:
+  # ==============================================================================
+  # INFRASTRUCTURE ACCOUNTS
+  # ==============================================================================
+  NetworkAccount:
+    Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+    Properties:
+      ProductId: !Ref AccountFactoryProductId
+      ProvisioningArtifactId: !Ref AccountFactoryArtifactId
+      ProvisionedProductName: Network
+      ProvisioningParameters:
+        - Key: AccountName
+          Value: Network
+        - Key: AccountEmail
+          Value: !Ref NetworkAccountEmail
+        - Key: ManagedOrganizationalUnit
+          Value: Infrastructure
+        - Key: SSOUserEmail
+          Value: !Ref NetworkUserEmail
+        - Key: SSOUserFirstName
+          Value: !Ref NetworkUserFirstName
+        - Key: SSOUserLastName
+          Value: !Ref NetworkUserLastName
+
+  SharedServicesAccount:
+    Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+    DependsOn: NetworkAccount
+    Properties:
+      ProductId: !Ref AccountFactoryProductId
+      ProvisioningArtifactId: !Ref AccountFactoryArtifactId
+      ProvisionedProductName: SharedServices
+      ProvisioningParameters:
+        - Key: AccountName
+          Value: Shared Services
+        - Key: AccountEmail
+          Value: !Ref SharedServicesAccountEmail
+        - Key: ManagedOrganizationalUnit
+          Value: Infrastructure
+        - Key: SSOUserEmail
+          Value: !Ref SharedServicesUserEmail
+        - Key: SSOUserFirstName
+          Value: !Ref SharedServicesUserFirstName
+        - Key: SSOUserLastName
+          Value: !Ref SharedServicesUserLastName
+
+  # ==============================================================================
+  # WORKLOAD ACCOUNTS
+  # ==============================================================================
+  DevAccount:
+    Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+    DependsOn: SharedServicesAccount
+    Properties:
+      ProductId: !Ref AccountFactoryProductId
+      ProvisioningArtifactId: !Ref AccountFactoryArtifactId
+      ProvisionedProductName: Dev
+      ProvisioningParameters:
+        - Key: AccountName
+          Value: Dev
+        - Key: AccountEmail
+          Value: !Ref DevAccountEmail
+        - Key: ManagedOrganizationalUnit
+          Value: Workloads
+        - Key: SSOUserEmail
+          Value: !Ref DevUserEmail
+        - Key: SSOUserFirstName
+          Value: !Ref DevUserFirstName
+        - Key: SSOUserLastName
+          Value: !Ref DevUserLastName
+
+  # ==============================================================================
+  # Uncomment the following resource when the Test account is required.
+  # Remember to update the DependsOn of the next account in the chain.
+  # ==============================================================================
+  # TestAccount:
+  #   Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+  #   DependsOn: DevAccount
+  #   Properties:
+  #     ProductId: !Ref AccountFactoryProductId
+  #     ProvisioningArtifactId: !Ref AccountFactoryArtifactId
+  #     ProvisionedProductName: Test
+  #     ProvisioningParameters:
+  #       - Key: AccountName
+  #         Value: Test
+  #       - Key: AccountEmail
+  #         Value: !Ref TestAccountEmail
+  #       - Key: ManagedOrganizationalUnit
+  #         Value: Workloads
+  #       - Key: SSOUserEmail
+  #         Value: !Ref TestUserEmail
+  #       - Key: SSOUserFirstName
+  #         Value: !Ref TestUserFirstName
+  #       - Key: SSOUserLastName
+  #         Value: !Ref TestUserLastName
+
+  # ==============================================================================
+  # Uncomment the following resource when the Stage account is required.
+  # Remember to update the DependsOn of the next account in the chain.
+  # ==============================================================================
+  # StageAccount:
+  #   Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+  #   DependsOn: TestAccount
+  #   Properties:
+  #     ProductId: !Ref AccountFactoryProductId
+  #     ProvisioningArtifactId: !Ref AccountFactoryArtifactId
+  #     ProvisionedProductName: Stage
+  #     ProvisioningParameters:
+  #       - Key: AccountName
+  #         Value: Stage
+  #       - Key: AccountEmail
+  #         Value: !Ref StageAccountEmail
+  #       - Key: ManagedOrganizationalUnit
+  #         Value: Workloads
+  #       - Key: SSOUserEmail
+  #         Value: !Ref StageUserEmail
+  #       - Key: SSOUserFirstName
+  #         Value: !Ref StageUserFirstName
+  #       - Key: SSOUserLastName
+  #         Value: !Ref StageUserLastName
+
+  ProdAccount:
+    Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+    DependsOn: DevAccount
+    Properties:
+      ProductId: !Ref AccountFactoryProductId
+      ProvisioningArtifactId: !Ref AccountFactoryArtifactId
+      ProvisionedProductName: Prod
+      ProvisioningParameters:
+        - Key: AccountName
+          Value: Prod
+        - Key: AccountEmail
+          Value: !Ref ProdAccountEmail
+        - Key: ManagedOrganizationalUnit
+          Value: Workloads
+        - Key: SSOUserEmail
+          Value: !Ref ProdUserEmail
+        - Key: SSOUserFirstName
+          Value: !Ref ProdUserFirstName
+        - Key: SSOUserLastName
+          Value: !Ref ProdUserLastName
+
+  # ==============================================================================
+  # Uncomment the following resource when the Sandbox account is required.
+  # Remember to also uncomment the Sandbox OU in 2-ous.yaml.
+  # ==============================================================================
+  # SandboxAccount:
+  #   Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+  #   DependsOn: ProdAccount
+  #   Properties:
+  #     ProductId: !Ref AccountFactoryProductId
+  #     ProvisioningArtifactId: !Ref AccountFactoryArtifactId
+  #     ProvisionedProductName: Sandbox
+  #     ProvisioningParameters:
+  #       - Key: AccountName
+  #         Value: Sandbox
+  #       - Key: AccountEmail
+  #         Value: !Ref SandboxAccountEmail
+  #       - Key: ManagedOrganizationalUnit
+  #         Value: Sandbox
+  #       - Key: SSOUserEmail
+  #         Value: !Ref SandboxUserEmail
+  #       - Key: SSOUserFirstName
+  #         Value: !Ref SandboxUserFirstName
+  #       - Key: SSOUserLastName
+  #         Value: !Ref SandboxUserLastName
+
+Outputs:
+  NetworkAccountId:
+    Description: AWS Account ID for the Network account
+    Value: !GetAtt NetworkAccount.Outputs.AccountId
+    Export:
+      Name: acme-accounts-NetworkAccountId
+
+  SharedServicesAccountId:
+    Description: AWS Account ID for the Shared Services account
+    Value: !GetAtt SharedServicesAccount.Outputs.AccountId
+    Export:
+      Name: acme-accounts-SharedServicesAccountId
+
+  DevAccountId:
+    Description: AWS Account ID for the Dev account
+    Value: !GetAtt DevAccount.Outputs.AccountId
+    Export:
+      Name: acme-accounts-DevAccountId
+
+  ProdAccountId:
+    Description: AWS Account ID for the Prod account
+    Value: !GetAtt ProdAccount.Outputs.AccountId
+    Export:
+      Name: acme-accounts-ProdAccountId

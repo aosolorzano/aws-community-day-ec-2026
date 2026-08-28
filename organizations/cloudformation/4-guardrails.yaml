@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Custom Control Tower guardrails for the organization.
+  These are project-owned controls enabled on top of the CT baseline —
+  they are NOT the guardrails created automatically by Control Tower.
+
+Parameters:
+  Region:
+    Type: String
+    Default: us-east-1
+  RegionDenyControlArn:
+    Type: String
+    Default: arn:aws:controlcatalog:::control/ka8e3pkqefnjsxuyc26ji580
+  RootAccessKeysControlArn:
+    Type: String
+    Default: arn:aws:controlcatalog:::control/8ui9y3oace2513xarz8aqojl7
+  DenyRootActionsControlArn:
+    Type: String
+    Default: arn:aws:controlcatalog:::control/5kvme4m5d2b4d7if2fs5yg2ui
+  EnableMFARootControlArn:
+    Type: String
+    Default: arn:aws:controlcatalog:::control/24izmu4k16gv9tvd7sexnyrfy
+
+Resources:
+  # ==============================================================================
+  # REGION DENY - restricts operations to the configured region only
+  # ==============================================================================
+  RegionDenyInfrastructure:
+    Type: AWS::ControlTower::EnabledControl
+    Properties:
+      ControlIdentifier: !Ref RegionDenyControlArn
+      TargetIdentifier: !ImportValue InfrastructureOUArn
+      Parameters:
+        - Key: AllowedRegions
+          Value:
+            - !Ref Region
+
+  RegionDenyWorkloads:
+    Type: AWS::ControlTower::EnabledControl
+    DependsOn: RegionDenyInfrastructure
+    Properties:
+      ControlIdentifier: !Ref RegionDenyControlArn
+      TargetIdentifier: !ImportValue WorkloadsOUArn
+      Parameters:
+        - Key: AllowedRegions
+          Value:
+            - !Ref Region
+
+  # ==============================================================================
+  # Uncomment the following resource when the Sandbox OU is required.
+  # Remember to also uncomment the Sandbox OU in 2-ous.yaml.
+  # ==============================================================================
+  # RegionDenySandbox:
+  #   Type: AWS::ControlTower::EnabledControl
+  #   DependsOn: RegionDenyWorkloads
+  #   Properties:
+  #     ControlIdentifier: !Ref RegionDenyControlArn
+  #     TargetIdentifier: !ImportValue SandboxOUArn
+  #     Parameters:
+  #       - Key: AllowedRegions
+  #         Value:
+  #           - !Ref Region
+
+  # ==============================================================================
+  # DENY ROOT USER ACCESS KEYS
+  # ==============================================================================
+  DenyRootKeysInfrastructure:
+    Type: AWS::ControlTower::EnabledControl
+    DependsOn: RegionDenyWorkloads
+    Properties:
+      ControlIdentifier: !Ref RootAccessKeysControlArn
+      TargetIdentifier: !ImportValue InfrastructureOUArn
+
+  DenyRootKeysWorkloads:
+    Type: AWS::ControlTower::EnabledControl
+    DependsOn: DenyRootKeysInfrastructure
+    Properties:
+      ControlIdentifier: !Ref RootAccessKeysControlArn
+      TargetIdentifier: !ImportValue WorkloadsOUArn
+
+  # ==============================================================================
+  # Uncomment the following resource when the Sandbox OU is required.
+  # Remember to also uncomment the Sandbox OU in 2-ous.yaml.
+  # ==============================================================================
+  # DenyRootKeysSandbox:
+  #   Type: AWS::ControlTower::EnabledControl
+  #   DependsOn: DenyRootKeysWorkloads
+  #   Properties:
+  #     ControlIdentifier: !Ref RootAccessKeysControlArn
+  #     TargetIdentifier: !ImportValue SandboxOUArn
+
+  # ==============================================================================
+  # DENY ROOT USER ACTIONS
+  # ==============================================================================
+  DenyRootActionsInfrastructure:
+    Type: AWS::ControlTower::EnabledControl
+    DependsOn: DenyRootKeysWorkloads
+    Properties:
+      ControlIdentifier: !Ref DenyRootActionsControlArn
+      TargetIdentifier: !ImportValue InfrastructureOUArn
+
+  DenyRootActionsWorkloads:
+    Type: AWS::ControlTower::EnabledControl
+    DependsOn: DenyRootActionsInfrastructure
+    Properties:
+      ControlIdentifier: !Ref DenyRootActionsControlArn
+      TargetIdentifier: !ImportValue WorkloadsOUArn
+
+  # ==============================================================================
+  # Uncomment the following resource when the Sandbox OU is required.
+  # Remember to also uncomment the Sandbox OU in 2-ous.yaml.
+  # ==============================================================================
+  # DenyRootActionsSandbox:
+  #   Type: AWS::ControlTower::EnabledControl
+  #   DependsOn: DenyRootActionsWorkloads
+  #   Properties:
+  #     ControlIdentifier: !Ref DenyRootActionsControlArn
+  #     TargetIdentifier: !ImportValue SandboxOUArn
+
+  # ==============================================================================
+  # ENABLE MFA FOR ROOT USER
+  # ==============================================================================
+  EnableMFARootInfrastructure:
+    Type: AWS::ControlTower::EnabledControl
+    DependsOn: DenyRootActionsWorkloads
+    Properties:
+      ControlIdentifier: !Ref EnableMFARootControlArn
+      TargetIdentifier: !ImportValue InfrastructureOUArn
+
+  EnableMFARootWorkloads:
+    Type: AWS::ControlTower::EnabledControl
+    DependsOn: EnableMFARootInfrastructure
+    Properties:
+      ControlIdentifier: !Ref EnableMFARootControlArn
+      TargetIdentifier: !ImportValue WorkloadsOUArn
+
+  # ==============================================================================
+  # Uncomment the following resource when the Sandbox OU is required.
+  # Remember to also uncomment the Sandbox OU in 2-ous.yaml.
+  # ==============================================================================
+  # EnableMFARootSandbox:
+  #   Type: AWS::ControlTower::EnabledControl
+  #   DependsOn: EnableMFARootWorkloads
+  #   Properties:
+  #     ControlIdentifier: !Ref EnableMFARootControlArn
+  #     TargetIdentifier: !ImportValue SandboxOUArn

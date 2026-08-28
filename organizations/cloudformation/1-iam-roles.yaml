@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM roles required by AWS Control Tower
+
+Resources:
+  ControlTowerAdminRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSControlTowerAdmin
+      Path: /service-role/
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: controltower.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AWSControlTowerAdminPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ec2:DescribeAvailabilityZones
+                Resource: '*'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSControlTowerServiceRolePolicy
+
+  CloudTrailRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSControlTowerCloudTrailRole
+      Path: /service-role/
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSControlTowerCloudTrailRolePolicy
+
+  StackSetRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSControlTowerStackSetRole
+      Path: /service-role/
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AWSControlTowerStackSetRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sts:AssumeRole
+                Resource: arn:aws:iam::*:role/AWSControlTowerExecution
+
+  ConfigAggregatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSControlTowerConfigAggregatorRoleForOrganizations
+      Path: /service-role/
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSConfigRoleForOrganizations

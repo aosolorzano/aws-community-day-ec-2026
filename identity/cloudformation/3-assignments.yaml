@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Identity Center account assignments for the platform
+
+Parameters:
+  InstanceArn:
+    Type: String
+    Description: ARN of the IAM Identity Center instance
+
+  ProjectPrefix:
+    Type: String
+    Default: Acme
+    Description: >
+      Prefix used for resource names. Must match the value in the other stacks.
+
+  ProjectPrefixLower:
+    Type: String
+    Default: acme
+    Description: >
+      Lowercase version of ProjectPrefix, used to import exports from the
+      permission sets and groups stacks.
+
+Resources:
+
+  # ==============================================================================
+  # INFRASTRUCTURE ADMINS → AcmePlatformAdmin → Network
+  # ==============================================================================
+  InfrastructureAdminsNetworkAssignment:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref InstanceArn
+      PermissionSetArn: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-PlatformAdminPermissionSetArn'
+      PrincipalType: GROUP
+      PrincipalId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-InfrastructureAdminsGroupId'
+      TargetType: AWS_ACCOUNT
+      TargetId: !ImportValue acme-accounts-NetworkAccountId
+
+  # ==============================================================================
+  # PLATFORM ADMINS → AcmePlatformAdmin → Shared Services
+  # ==============================================================================
+  PlatformAdminsSharedServicesAssignment:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref InstanceArn
+      PermissionSetArn: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-PlatformAdminPermissionSetArn'
+      PrincipalType: GROUP
+      PrincipalId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-PlatformAdminsGroupId'
+      TargetType: AWS_ACCOUNT
+      TargetId: !ImportValue acme-accounts-SharedServicesAccountId
+
+  # ==============================================================================
+  # DEVELOPERS → AcmeDeveloperAccess → Dev
+  # ==============================================================================
+  DevelopersDevAssignment:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref InstanceArn
+      PermissionSetArn: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-DeveloperAccessPermissionSetArn'
+      PrincipalType: GROUP
+      PrincipalId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-DevelopersGroupId'
+      TargetType: AWS_ACCOUNT
+      TargetId: !ImportValue acme-accounts-DevAccountId
+
+  # ==============================================================================
+  # DEVELOPERS → AcmeReadOnlyAccess → Prod
+  # ==============================================================================
+  DevelopersProdAssignment:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref InstanceArn
+      PermissionSetArn: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-ReadOnlyAccessPermissionSetArn'
+      PrincipalType: GROUP
+      PrincipalId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-DevelopersGroupId'
+      TargetType: AWS_ACCOUNT
+      TargetId: !ImportValue acme-accounts-ProdAccountId
+
+  # ==============================================================================
+  # OPERATIONS → AcmePlatformAdmin → Prod
+  # ==============================================================================
+  OperationsProdAssignment:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref InstanceArn
+      PermissionSetArn: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-PlatformAdminPermissionSetArn'
+      PrincipalType: GROUP
+      PrincipalId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-OperationsGroupId'
+      TargetType: AWS_ACCOUNT
+      TargetId: !ImportValue acme-accounts-ProdAccountId
+
+  # ==============================================================================
+  # OPERATIONS → AcmeReadOnlyAccess → Dev
+  # ==============================================================================
+  OperationsDevAssignment:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Ref InstanceArn
+      PermissionSetArn: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-ReadOnlyAccessPermissionSetArn'
+      PrincipalType: GROUP
+      PrincipalId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-identity-OperationsGroupId'
+      TargetType: AWS_ACCOUNT
+      TargetId: !ImportValue acme-accounts-DevAccountId

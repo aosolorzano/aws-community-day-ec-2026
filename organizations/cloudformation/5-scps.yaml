@@ -1,0 +1,197 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Service Control Policies (SCPs) for the organization.
+  These policies complement the guardrails already applied by Control Tower.
+  They do NOT duplicate what CT already covers (Config recorder, CT roles,
+  CT Lambda/SNS/EventBridge resources, root user access, region deny).
+
+Parameters:
+  RootId:
+    Type: String
+    Description: Root ID of the AWS Organization (e.g. r-xxxx)
+
+  ProjectPrefix:
+    Type: String
+    Default: Acme
+    Description: >
+      Prefix applied to SCP names visible in the console. Use PascalCase.
+
+  ProjectPrefixLower:
+    Type: String
+    Default: acme
+    Description: >
+      Lowercase version of ProjectPrefix. Must match lowercase of ProjectPrefix.
+
+Resources:
+
+  # ==============================================================================
+  # SCP: DENY SECURITY SERVICE MODIFICATIONS
+  # Protects GuardDuty, CloudTrail, IAM Access Analyzer, Security Hub, and
+  # CloudWatch alarms from being disabled or modified by member account users.
+  #
+  # Control Tower already protects Config, its own SNS/Lambda/EventBridge
+  # resources, CT S3 buckets, root user access, and region deny.
+  # Those are NOT duplicated here.
+  #
+  # Applied to: Infrastructure OU, Workloads OU
+  # Security OU is intentionally excluded — managed exclusively by Control Tower.
+  # ==============================================================================
+  DenySecurityServiceModificationsPolicy:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Name: !Sub '${ProjectPrefix}DenySecurityServiceModifications'
+      Description: >
+        Prevents disabling or modifying GuardDuty, CloudTrail, IAM Access
+        Analyzer, Security Hub, and CloudWatch alarms. Complements CT guardrails.
+      Type: SERVICE_CONTROL_POLICY
+      TargetIds:
+        - !ImportValue InfrastructureOUId
+        - !ImportValue WorkloadsOUId
+      Content:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyGuardDutyModifications
+            Effect: Deny
+            Action:
+              - guardduty:DeleteDetector
+              - guardduty:DeleteFilter
+              - guardduty:DeleteInvitations
+              - guardduty:DeleteIPSet
+              - guardduty:DeleteMembers
+              - guardduty:DeletePublishingDestination
+              - guardduty:DeleteThreatIntelSet
+              - guardduty:DisassociateFromMasterAccount
+              - guardduty:DisassociateMembers
+              - guardduty:StopMonitoringMembers
+              - guardduty:UpdateDetector
+              - guardduty:UpdateFilter
+              - guardduty:UpdateIPSet
+              - guardduty:UpdatePublishingDestination
+              - guardduty:UpdateThreatIntelSet
+              - guardduty:CreateFilter
+              - guardduty:CreateIPSet
+              - guardduty:CreateThreatIntelSet
+              - guardduty:ArchiveFindings
+              - guardduty:UnarchiveFindings
+              - guardduty:UpdateFindingsFeedback
+            Resource: '*'
+
+          - Sid: DenyCloudTrailModifications
+            Effect: Deny
+            Action:
+              - cloudtrail:DeleteTrail
+              - cloudtrail:StopLogging
+              - cloudtrail:UpdateTrail
+              - cloudtrail:PutEventSelectors
+              - cloudtrail:PutInsightSelectors
+              - cloudtrail:RemoveTags
+            Resource: '*'
+
+          - Sid: DenyAccessAnalyzerDeletion
+            Effect: Deny
+            Action:
+              - access-analyzer:DeleteAnalyzer
+              - access-analyzer:DeleteArchiveRule
+            Resource: '*'
+
+          - Sid: DenySecurityHubModifications
+            Effect: Deny
+            Action:
+              - securityhub:DisableSecurityHub
+              - securityhub:DeleteMembers
+              - securityhub:DisassociateFromMasterAccount
+              - securityhub:DisassociateMembers
+              - securityhub:UpdateSecurityHubConfiguration
+            Resource: '*'
+
+          - Sid: DenyCloudWatchAlarmModifications
+            Effect: Deny
+            Action:
+              - cloudwatch:DeleteAlarms
+              - cloudwatch:DeleteDashboards
+              - cloudwatch:DisableAlarmActions
+              - cloudwatch:SetAlarmState
+            Resource: '*'
+
+  # ==============================================================================
+  # SCP: DENY UNAUTHORIZED NETWORK CONFIGURATIONS
+  # Prevents creating unauthorized network paths out of the organization
+  # (RAM sharing externally or at org/OU level).
+  # VPC peering within the organization is allowed — Transit Gateway is
+  # the preferred mechanism but internal peering is permitted.
+  # Global Accelerator is intentionally NOT blocked — it may be needed
+  # for the Workloads domain.
+  #
+  # Applied to: Infrastructure OU, Workloads OU
+  # ==============================================================================
+  DenyUnauthorizedNetworkPolicy:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Name: !Sub '${ProjectPrefix}DenyUnauthorizedNetworkConfigurations'
+      Description: >
+        Prevents RAM sharing outside the organization and at org/OU level.
+        Internal peering, Transit Gateway, and Global Accelerator are allowed.
+      Type: SERVICE_CONTROL_POLICY
+      TargetIds:
+        - !ImportValue InfrastructureOUId
+        - !ImportValue WorkloadsOUId
+      Content:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyRAMExternalSharing
+            Effect: Deny
+            Action:
+              - ram:CreateResourceShare
+              - ram:UpdateResourceShare
+            Resource: '*'
+            Condition:
+              Bool:
+                ram:RequestedAllowsExternalPrincipals: 'true'
+
+          - Sid: DenyRAMOrgLevelSharing
+            Effect: Deny
+            Action:
+              - ram:CreateResourceShare
+              - ram:AssociateResourceShare
+            Resource: '*'
+            Condition:
+              ForAnyValue:StringLike:
+                ram:Principal:
+                  - arn:aws:organizations::*:organization/*
+                  - arn:aws:organizations::*:ou/*
+
+  # ==============================================================================
+  # SCP: PROTECT IDENTITY CENTER CONFIGURATION
+  # Prevents member accounts from tampering with the SAML provider used by
+  # Identity Center (Entra ID integration) or creating rogue IC instances.
+  # Critical since Entra ID is the sole authentication source.
+  #
+  # Applied to: Infrastructure OU, Workloads OU
+  # ==============================================================================
+  ProtectIdentityCenterPolicy:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Name: !Sub '${ProjectPrefix}ProtectIdentityCenterConfiguration'
+      Description: >
+        Prevents modification of the SAML provider used by Identity Center
+        (Entra ID) and blocks creation of account-level IC instances.
+      Type: SERVICE_CONTROL_POLICY
+      TargetIds:
+        - !ImportValue InfrastructureOUId
+        - !ImportValue WorkloadsOUId
+      Content:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenySAMLProviderChanges
+            Effect: Deny
+            Action:
+              - iam:DeleteSAMLProvider
+              - iam:UpdateSAMLProvider
+            Resource: arn:aws:iam::*:saml-provider/AWSSSO_*
+
+          - Sid: DenyAccountLevelIdentityCenterInstances
+            Effect: Deny
+            Action:
+              - sso:CreateInstance
+              - sso:DeleteInstance
+            Resource: '*'

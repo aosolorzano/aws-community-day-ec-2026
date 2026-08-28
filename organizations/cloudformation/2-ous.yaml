@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Organizational Units and Security accounts
+
+Parameters:
+  RootId:
+    Type: String
+  AuditEmail:
+    Type: String
+    Default: your-email+aws-audit@domain.com
+  LogArchiveEmail:
+    Type: String
+    Default: your-email+aws-log@domain.com
+
+Resources:
+  SecurityOU:
+    Type: AWS::Organizations::OrganizationalUnit
+    Properties:
+      Name: Security
+      ParentId: !Ref RootId
+
+  InfrastructureOU:
+    Type: AWS::Organizations::OrganizationalUnit
+    Properties:
+      Name: Infrastructure
+      ParentId: !Ref RootId
+
+  WorkloadsOU:
+    Type: AWS::Organizations::OrganizationalUnit
+    Properties:
+      Name: Workloads
+      ParentId: !Ref RootId
+
+  # ==============================================================================
+  # Uncomment the following resource when the Sandbox OU is required.
+  # ==============================================================================
+  # SandboxOU:
+  #   Type: AWS::Organizations::OrganizationalUnit
+  #   Properties:
+  #     Name: Sandbox
+  #     ParentId: !Ref RootId
+
+  # Security accounts (needed before Landing Zone creation)
+  AuditAccount:
+    Type: AWS::Organizations::Account
+    Properties:
+      AccountName: Audit
+      Email: !Ref AuditEmail
+      ParentIds:
+        - !GetAtt SecurityOU.Id
+
+  LogArchiveAccount:
+    Type: AWS::Organizations::Account
+    Properties:
+      AccountName: Log Archive
+      Email: !Ref LogArchiveEmail
+      ParentIds:
+        - !GetAtt SecurityOU.Id
+
+Outputs:
+  SecurityOUId:
+    Value: !GetAtt SecurityOU.Id
+    Export:
+      Name: SecurityOUId
+
+  InfrastructureOUId:
+    Value: !GetAtt InfrastructureOU.Id
+    Export:
+      Name: InfrastructureOUId
+
+  InfrastructureOUArn:
+    Value: !GetAtt InfrastructureOU.Arn
+    Export:
+      Name: InfrastructureOUArn
+
+  WorkloadsOUId:
+    Value: !GetAtt WorkloadsOU.Id
+    Export:
+      Name: WorkloadsOUId
+
+  WorkloadsOUArn:
+    Value: !GetAtt WorkloadsOU.Arn
+    Export:
+      Name: WorkloadsOUArn
+
+  # ==============================================================================
+  # Uncomment the following output when the Sandbox OU is required.
+  # ==============================================================================
+  # SandboxOUArn:
+  #   Value: !GetAtt SandboxOU.Arn
+  #   Export:
+  #     Name: SandboxOUArn
+
+  AuditAccountId:
+    Value: !GetAtt AuditAccount.AccountId
+    Export:
+      Name: AuditAccountId
+
+  LogArchiveAccountId:
+    Value: !GetAtt LogArchiveAccount.AccountId
+    Export:
+      Name: LogArchiveAccountId

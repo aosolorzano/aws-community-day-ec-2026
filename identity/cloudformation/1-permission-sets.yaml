@@ -1,0 +1,288 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Identity Center Permission Sets for the platform
+
+Parameters:
+  InstanceArn:
+    Type: String
+    Description: ARN of the IAM Identity Center instance
+
+  ProjectPrefix:
+    Type: String
+    Default: Acme
+    Description: >
+      Prefix applied to resource names visible in the console (Permission Sets).
+      Use PascalCase — e.g. 'Acme', 'MyOrg'.
+
+  ProjectPrefixLower:
+    Type: String
+    Default: acme
+    Description: >
+      Lowercase version of ProjectPrefix, used for stack export names.
+      Must match lowercase of ProjectPrefix — e.g. 'acme', 'myorg'.
+
+Resources:
+
+  # ==============================================================================
+  # PLATFORM ADMIN
+  # Full administrative access for infrastructure and platform engineers.
+  # Assigned to Acme-Infrastructure-Admins (Network account) and
+  # Acme-Platform-Admins (Shared Services account).
+  # ==============================================================================
+  PlatformAdminPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Name: !Sub '${ProjectPrefix}PlatformAdmin'
+      Description: Full administrative access for infrastructure and platform engineers
+      InstanceArn: !Ref InstanceArn
+      SessionDuration: PT8H
+      ManagedPolicies:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  # ==============================================================================
+  # DEVELOPER ACCESS
+  # Service-scoped access for platform developers.
+  #
+  # Allowed services: Lambda, DynamoDB, ECS, ECR, S3, CloudWatch,
+  # X-Ray, SQS, SNS, Secrets Manager, SSM, EventBridge, CloudFormation,
+  # API Gateway, CodeBuild, CodePipeline, Service Discovery.
+  #
+  # ABAC enforcement:
+  #   - Read operations are unrestricted — developers can observe any resource
+  #     for debugging and collaboration.
+  #   - Create operations require the request to include the tag
+  #     owner=<caller email> — enforced via aws:RequestTag/owner.
+  #   - Modify and delete operations require the existing resource to have the
+  #     tag owner=<caller email> — enforced via aws:ResourceTag/owner.
+  #
+  # Hard guardrails: IAM and billing actions are always denied, regardless of
+  # resource ownership. This prevents privilege escalation and accidental cost
+  # changes.
+  #
+  # Assigned to Acme-Developers (Dev account full, Prod account read-only).
+  # ==============================================================================
+  DeveloperAccessPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Name: !Sub '${ProjectPrefix}DeveloperAccess'
+      Description: Service-scoped access for platform developers - no IAM, no billing
+      InstanceArn: !Ref InstanceArn
+      SessionDuration: PT8H
+      InlinePolicy:
+        Version: '2012-10-17'
+        Statement:
+
+          # --------------------------------------------------------------------
+          # READ — Unrestricted within allowed services.
+          # Developers can inspect any resource for debugging and collaboration.
+          # No ABAC condition required for read operations.
+          # --------------------------------------------------------------------
+          - Sid: AllowReadPlatformServices
+            Effect: Allow
+            Action:
+              - lambda:Get*
+              - lambda:List*
+              - dynamodb:Describe*
+              - dynamodb:Get*
+              - dynamodb:List*
+              - dynamodb:Query
+              - dynamodb:Scan
+              - ecs:Describe*
+              - ecs:List*
+              - ecr:Describe*
+              - ecr:Get*
+              - ecr:List*
+              - s3:Get*
+              - s3:List*
+              - cloudwatch:Describe*
+              - cloudwatch:Get*
+              - cloudwatch:List*
+              - logs:Describe*
+              - logs:Get*
+              - logs:List*
+              - logs:FilterLogEvents
+              - logs:StartQuery
+              - logs:StopQuery
+              - logs:GetQueryResults
+              - xray:Get*
+              - xray:List*
+              - xray:BatchGet*
+              - sqs:Get*
+              - sqs:List*
+              - sqs:Receive*
+              - sns:Get*
+              - sns:List*
+              - secretsmanager:Describe*
+              - secretsmanager:List*
+              - ssm:GetParameter
+              - ssm:GetParameters
+              - ssm:GetParametersByPath
+              - ssm:DescribeParameters
+              - servicediscovery:Get*
+              - servicediscovery:List*
+              - cloudformation:Describe*
+              - cloudformation:Get*
+              - cloudformation:List*
+              - events:Describe*
+              - events:List*
+              - apigateway:GET
+              - codebuild:BatchGet*
+              - codebuild:List*
+              - codepipeline:Get*
+              - codepipeline:List*
+            Resource: '*'
+
+          # --------------------------------------------------------------------
+          # CREATE — ABAC enforced via aws:RequestTag/owner.
+          # The request must include the tag owner=<caller email> at creation
+          # time. This binds new resources to their creator from the start.
+          # --------------------------------------------------------------------
+          - Sid: AllowCreateOwnedResources
+            Effect: Allow
+            Action:
+              - lambda:CreateFunction
+              - lambda:CreateAlias
+              - lambda:AddPermission
+              - lambda:TagResource
+              - dynamodb:CreateTable
+              - dynamodb:TagResource
+              - ecs:CreateService
+              - ecs:RegisterTaskDefinition
+              - ecs:RunTask
+              - ecs:TagResource
+              - ecr:CreateRepository
+              - ecr:TagResource
+              - s3:CreateBucket
+              - s3:PutBucketTagging
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:TagResource
+              - sqs:CreateQueue
+              - sqs:TagQueue
+              - sns:CreateTopic
+              - sns:Subscribe
+              - sns:TagResource
+              - secretsmanager:CreateSecret
+              - secretsmanager:TagResource
+              - events:PutRule
+              - events:PutTargets
+              - events:TagResource
+              - cloudformation:CreateStack
+              - cloudformation:TagResource
+            Resource: '*'
+            Condition:
+              StringEquals:
+                aws:RequestTag/owner: '${aws:PrincipalTag/email}'
+
+          # --------------------------------------------------------------------
+          # MODIFY / DELETE — ABAC enforced via aws:ResourceTag/owner.
+          # The existing resource must be tagged owner=<caller email>.
+          # Developers can only modify or delete resources they created.
+          # --------------------------------------------------------------------
+          - Sid: AllowModifyOwnedResources
+            Effect: Allow
+            Action:
+              - lambda:UpdateFunctionCode
+              - lambda:UpdateFunctionConfiguration
+              - lambda:UpdateAlias
+              - lambda:DeleteFunction
+              - lambda:DeleteAlias
+              - lambda:RemovePermission
+              - lambda:UntagResource
+              - lambda:InvokeFunction
+              - lambda:PublishVersion
+              - dynamodb:UpdateTable
+              - dynamodb:DeleteTable
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:UntagResource
+              - ecs:UpdateService
+              - ecs:DeleteService
+              - ecs:DeregisterTaskDefinition
+              - ecs:StopTask
+              - ecs:UntagResource
+              - ecr:DeleteRepository
+              - ecr:PutImage
+              - ecr:BatchDeleteImage
+              - ecr:UntagResource
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:DeleteBucket
+              - logs:PutLogEvents
+              - logs:DeleteLogGroup
+              - logs:UntagResource
+              - sqs:DeleteQueue
+              - sqs:SendMessage
+              - sqs:DeleteMessage
+              - sqs:UntagQueue
+              - sns:DeleteTopic
+              - sns:Publish
+              - sns:Unsubscribe
+              - sns:UntagResource
+              - secretsmanager:UpdateSecret
+              - secretsmanager:DeleteSecret
+              - secretsmanager:PutSecretValue
+              - secretsmanager:UntagResource
+              - events:DeleteRule
+              - events:RemoveTargets
+              - events:UntagResource
+              - cloudformation:UpdateStack
+              - cloudformation:DeleteStack
+              - cloudformation:UntagResource
+            Resource: '*'
+            Condition:
+              StringEquals:
+                aws:ResourceTag/owner: '${aws:PrincipalTag/email}'
+
+          # --------------------------------------------------------------------
+          # DENY — IAM and billing are always denied, regardless of ownership.
+          # Prevents privilege escalation and accidental cost changes.
+          # --------------------------------------------------------------------
+          - Sid: DenyIAMAndBilling
+            Effect: Deny
+            Action:
+              - iam:*
+              - organizations:*
+              - account:*
+              - billing:*
+              - budgets:*
+              - ce:*
+              - cur:*
+              - aws-portal:*
+            Resource: '*'
+
+  # ==============================================================================
+  # READ ONLY ACCESS
+  # Audit and observability access across all services.
+  # Assigned to Acme-Developers (Prod account) and Acme-Operations (Dev account)
+  # to allow cross-environment visibility without write access.
+  # ==============================================================================
+  ReadOnlyAccessPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Name: !Sub '${ProjectPrefix}ReadOnlyAccess'
+      Description: Read-only access for audit and cross-environment observability
+      InstanceArn: !Ref InstanceArn
+      SessionDuration: PT4H
+      ManagedPolicies:
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+
+Outputs:
+  PlatformAdminPermissionSetArn:
+    Description: ARN of the AcmePlatformAdmin Permission Set
+    Value: !GetAtt PlatformAdminPermissionSet.PermissionSetArn
+    Export:
+      Name: !Sub '${ProjectPrefixLower}-identity-PlatformAdminPermissionSetArn'
+
+  DeveloperAccessPermissionSetArn:
+    Description: ARN of the AcmeDeveloperAccess Permission Set
+    Value: !GetAtt DeveloperAccessPermissionSet.PermissionSetArn
+    Export:
+      Name: !Sub '${ProjectPrefixLower}-identity-DeveloperAccessPermissionSetArn'
+
+  ReadOnlyAccessPermissionSetArn:
+    Description: ARN of the AcmeReadOnlyAccess Permission Set
+    Value: !GetAtt ReadOnlyAccessPermissionSet.PermissionSetArn
+    Export:
+      Name: !Sub '${ProjectPrefixLower}-identity-ReadOnlyAccessPermissionSetArn'
