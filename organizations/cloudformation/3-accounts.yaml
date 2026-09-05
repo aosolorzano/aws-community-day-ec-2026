@@ -8,110 +8,86 @@ Parameters:
   AccountFactoryArtifactId:
     Type: String
     Description: Active Provisioning Artifact ID for Account Factory
+  ProjectPrefixLower:
+    Type: String
+    Default: acme
+    Description: Lowercase project prefix used for CloudFormation exports
 
   # Network account
   NetworkAccountEmail:
     Type: String
-    Default: your-email+aws-network@domain.com
   NetworkUserEmail:
     Type: String
-    Default: sheldon.cooper@example.com
   NetworkUserFirstName:
     Type: String
-    Default: Sheldon
   NetworkUserLastName:
     Type: String
-    Default: Cooper
 
   # Shared Services account
   SharedServicesAccountEmail:
     Type: String
-    Default: your-email+aws-shared@domain.com
   SharedServicesUserEmail:
     Type: String
-    Default: leonard.hofstadter@example.com
   SharedServicesUserFirstName:
     Type: String
-    Default: Leonard
   SharedServicesUserLastName:
     Type: String
-    Default: Hofstadter
 
   # Dev account
   DevAccountEmail:
     Type: String
-    Default: your-email+aws-dev@domain.com
   DevUserEmail:
     Type: String
-    Default: howard.wolowitz@example.com
   DevUserFirstName:
     Type: String
-    Default: Howard
   DevUserLastName:
     Type: String
-    Default: Wolowitz
 
   # ==============================================================================
   # Uncomment the following parameters when the Test account is required.
   # ==============================================================================
   # TestAccountEmail:
   #   Type: String
-  #   Default: your-email+aws-test@domain.com
   # TestUserEmail:
   #   Type: String
-  #   Default: bernadette.rostenkowski@example.com
   # TestUserFirstName:
   #   Type: String
-  #   Default: Bernadette
   # TestUserLastName:
   #   Type: String
-  #   Default: Rostenkowski
 
   # ==============================================================================
   # Uncomment the following parameters when the Stage account is required.
   # ==============================================================================
   # StageAccountEmail:
   #   Type: String
-  #   Default: your-email+aws-stage@domain.com
   # StageUserEmail:
   #   Type: String
-  #   Default: amy.farrah-fowler@example.com
   # StageUserFirstName:
   #   Type: String
-  #   Default: Amy
   # StageUserLastName:
   #   Type: String
-  #   Default: Farrah Fowler
 
   # Prod account
   ProdAccountEmail:
     Type: String
-    Default: your-email+aws-prod@domain.com
   ProdUserEmail:
     Type: String
-    Default: raj.koothrappali@example.com
   ProdUserFirstName:
     Type: String
-    Default: Rajesh
   ProdUserLastName:
     Type: String
-    Default: Koothrappali
 
   # ==============================================================================
   # Uncomment the following parameters when the Sandbox account is required.
   # ==============================================================================
   # SandboxAccountEmail:
   #   Type: String
-  #   Default: your-email+aws-sandbox@domain.com
   # SandboxUserEmail:
   #   Type: String
-  #   Default: penny.hofstadter@example.com
   # SandboxUserFirstName:
   #   Type: String
-  #   Default: Penny
   # SandboxUserLastName:
   #   Type: String
-  #   Default: Hofstadter
 
 Resources:
   # ==============================================================================
@@ -283,22 +259,22 @@ Outputs:
     Description: AWS Account ID for the Network account
     Value: !GetAtt NetworkAccount.Outputs.AccountId
     Export:
-      Name: acme-accounts-NetworkAccountId
+      Name: !Sub '${ProjectPrefixLower}-accounts-NetworkAccountId'
 
   SharedServicesAccountId:
     Description: AWS Account ID for the Shared Services account
     Value: !GetAtt SharedServicesAccount.Outputs.AccountId
     Export:
-      Name: acme-accounts-SharedServicesAccountId
+      Name: !Sub '${ProjectPrefixLower}-accounts-SharedServicesAccountId'
 
   DevAccountId:
     Description: AWS Account ID for the Dev account
     Value: !GetAtt DevAccount.Outputs.AccountId
     Export:
-      Name: acme-accounts-DevAccountId
+      Name: !Sub '${ProjectPrefixLower}-accounts-DevAccountId'
 
   ProdAccountId:
     Description: AWS Account ID for the Prod account
     Value: !GetAtt ProdAccount.Outputs.AccountId
     Export:
-      Name: acme-accounts-ProdAccountId
+      Name: !Sub '${ProjectPrefixLower}-accounts-ProdAccountId'

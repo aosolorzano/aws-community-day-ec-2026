@@ -8,6 +8,10 @@ Parameters:
   Region:
     Type: String
     Default: us-east-1
+  ProjectPrefixLower:
+    Type: String
+    Default: acme
+    Description: Lowercase project prefix used to import OU exports
   RegionDenyControlArn:
     Type: String
     Default: arn:aws:controlcatalog:::control/ka8e3pkqefnjsxuyc26ji580
@@ -29,7 +33,8 @@ Resources:
     Type: AWS::ControlTower::EnabledControl
     Properties:
       ControlIdentifier: !Ref RegionDenyControlArn
-      TargetIdentifier: !ImportValue InfrastructureOUArn
+      TargetIdentifier: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-org-InfrastructureOUArn'
       Parameters:
         - Key: AllowedRegions
           Value:
@@ -40,7 +45,8 @@ Resources:
     DependsOn: RegionDenyInfrastructure
     Properties:
       ControlIdentifier: !Ref RegionDenyControlArn
-      TargetIdentifier: !ImportValue WorkloadsOUArn
+      TargetIdentifier: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-org-WorkloadsOUArn'
       Parameters:
         - Key: AllowedRegions
           Value:
@@ -55,7 +61,8 @@ Resources:
   #   DependsOn: RegionDenyWorkloads
   #   Properties:
   #     ControlIdentifier: !Ref RegionDenyControlArn
-  #     TargetIdentifier: !ImportValue SandboxOUArn
+  #     TargetIdentifier: !ImportValue
+  #       'Fn::Sub': '${ProjectPrefixLower}-org-SandboxOUArn'
   #     Parameters:
   #       - Key: AllowedRegions
   #         Value:
@@ -69,14 +76,16 @@ Resources:
     DependsOn: RegionDenyWorkloads
     Properties:
       ControlIdentifier: !Ref RootAccessKeysControlArn
-      TargetIdentifier: !ImportValue InfrastructureOUArn
+      TargetIdentifier: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-org-InfrastructureOUArn'
 
   DenyRootKeysWorkloads:
     Type: AWS::ControlTower::EnabledControl
     DependsOn: DenyRootKeysInfrastructure
     Properties:
       ControlIdentifier: !Ref RootAccessKeysControlArn
-      TargetIdentifier: !ImportValue WorkloadsOUArn
+      TargetIdentifier: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-org-WorkloadsOUArn'
 
   # ==============================================================================
   # Uncomment the following resource when the Sandbox OU is required.
@@ -87,7 +96,8 @@ Resources:
   #   DependsOn: DenyRootKeysWorkloads
   #   Properties:
   #     ControlIdentifier: !Ref RootAccessKeysControlArn
-  #     TargetIdentifier: !ImportValue SandboxOUArn
+  #     TargetIdentifier: !ImportValue
+  #       'Fn::Sub': '${ProjectPrefixLower}-org-SandboxOUArn'
 
   # ==============================================================================
   # DENY ROOT USER ACTIONS
@@ -97,14 +107,16 @@ Resources:
     DependsOn: DenyRootKeysWorkloads
     Properties:
       ControlIdentifier: !Ref DenyRootActionsControlArn
-      TargetIdentifier: !ImportValue InfrastructureOUArn
+      TargetIdentifier: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-org-InfrastructureOUArn'
 
   DenyRootActionsWorkloads:
     Type: AWS::ControlTower::EnabledControl
     DependsOn: DenyRootActionsInfrastructure
     Properties:
       ControlIdentifier: !Ref DenyRootActionsControlArn
-      TargetIdentifier: !ImportValue WorkloadsOUArn
+      TargetIdentifier: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-org-WorkloadsOUArn'
 
   # ==============================================================================
   # Uncomment the following resource when the Sandbox OU is required.
@@ -115,7 +127,8 @@ Resources:
   #   DependsOn: DenyRootActionsWorkloads
   #   Properties:
   #     ControlIdentifier: !Ref DenyRootActionsControlArn
-  #     TargetIdentifier: !ImportValue SandboxOUArn
+  #     TargetIdentifier: !ImportValue
+  #       'Fn::Sub': '${ProjectPrefixLower}-org-SandboxOUArn'
 
   # ==============================================================================
   # ENABLE MFA FOR ROOT USER
@@ -125,14 +138,16 @@ Resources:
     DependsOn: DenyRootActionsWorkloads
     Properties:
       ControlIdentifier: !Ref EnableMFARootControlArn
-      TargetIdentifier: !ImportValue InfrastructureOUArn
+      TargetIdentifier: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-org-InfrastructureOUArn'
 
   EnableMFARootWorkloads:
     Type: AWS::ControlTower::EnabledControl
     DependsOn: EnableMFARootInfrastructure
     Properties:
       ControlIdentifier: !Ref EnableMFARootControlArn
-      TargetIdentifier: !ImportValue WorkloadsOUArn
+      TargetIdentifier: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-org-WorkloadsOUArn'
 
   # ==============================================================================
   # Uncomment the following resource when the Sandbox OU is required.
@@ -143,4 +158,5 @@ Resources:
   #   DependsOn: EnableMFARootWorkloads
   #   Properties:
   #     ControlIdentifier: !Ref EnableMFARootControlArn
-  #     TargetIdentifier: !ImportValue SandboxOUArn
+  #     TargetIdentifier: !ImportValue
+  #       'Fn::Sub': '${ProjectPrefixLower}-org-SandboxOUArn'

@@ -25,10 +25,6 @@ read -r -p "  AWS region     [us-east-1]: " REGION
 REGION="${REGION:-us-east-1}"
 export REGION
 
-# Internal project prefix — drives all resource naming conventions.
-PROJECT_PREFIX="Acme"
-export PROJECT_PREFIX
-
 # Verify the profile exists before entering the menu loop
 source "$ROOT_DIR/common/validate.sh"
 

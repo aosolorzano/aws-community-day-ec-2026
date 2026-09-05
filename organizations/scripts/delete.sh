@@ -3,6 +3,22 @@ set -e
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 CFN_DIR="$SCRIPTS_DIR/../cloudformation"
+PROJECT_PREFIX_LOWER=$(echo "$PROJECT_PREFIX" | tr '[:upper:]' '[:lower:]')
+
+delete_stack_if_exists() {
+  local STACK_NAME="$1"
+
+  if aws cloudformation describe-stacks \
+    --stack-name "$STACK_NAME" \
+    --region "$REGION" \
+    > /dev/null 2>&1; then
+    aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$REGION"
+    aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME" --region "$REGION"
+    echo "  Stack '$STACK_NAME' deleted."
+  else
+    echo "  Stack '$STACK_NAME' not found, skipping."
+  fi
+}
 
 echo ""
 echo "  WARNING: This will permanently delete all Organizations domain resources:"
@@ -23,7 +39,15 @@ if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
 fi
 
 echo ""
-echo "=== STEP 1: DELETING LANDING ZONE ==="
+echo "=== STEP 1: REMOVING CUSTOM GOVERNANCE STACKS ==="
+# These stacks must be removed before the Landing Zone and OUs because they
+# attach controls and organization policies to the target OUs.
+delete_stack_if_exists "${PROJECT_PREFIX_LOWER}-org-guardrails"
+delete_stack_if_exists "${PROJECT_PREFIX_LOWER}-org-scps"
+delete_stack_if_exists "${PROJECT_PREFIX_LOWER}-org-rcps"
+
+echo ""
+echo "=== STEP 2: DELETING LANDING ZONE ==="
 LZ_ARN=$(aws controltower list-landing-zones \
   --region "$REGION" \
   --query 'landingZones[0].arn' --output text 2>/dev/null || echo "")
@@ -55,7 +79,7 @@ else
 fi
 
 echo ""
-echo "=== STEP 2: CLOSING MEMBER ACCOUNTS ==="
+echo "=== STEP 3: CLOSING MEMBER ACCOUNTS ==="
 MGMT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 ACCOUNTS=$(aws organizations list-accounts \
   --query "Accounts[?Status=='ACTIVE' && Id!='$MGMT_ID'].Id" --output text)
@@ -67,7 +91,7 @@ done
 echo "Member accounts closed."
 
 echo ""
-echo "=== STEP 3: MOVING ACCOUNTS TO CLEANUP OUs ==="
+echo "=== STEP 4: MOVING ACCOUNTS TO CLEANUP OUs ==="
 ROOT_ID=$(aws organizations list-roots --query 'Roots[0].Id' --output text)
 
 # Create 'Suspended' OU for closed accounts (if it doesn't exist)
@@ -140,7 +164,7 @@ done <<< "$ROOT_ACCOUNTS"
 echo "Accounts moved to cleanup OUs."
 
 echo ""
-echo "=== STEP 4: DELETING IDENTITY CENTER INSTANCE ==="
+echo "=== STEP 5: DELETING IDENTITY CENTER INSTANCE ==="
 IC_INSTANCE_ARN=$(aws sso-admin list-instances \
   --region "$REGION" \
   --query 'Instances[0].InstanceArn' --output text 2>/dev/null || true)
@@ -155,14 +179,14 @@ else
 fi
 
 echo ""
-echo "=== STEP 5: CLEANING UP CONTROL TOWER RESIDUAL RESOURCES ==="
+echo "=== STEP 6: CLEANING UP CONTROL TOWER RESIDUAL RESOURCES ==="
 aws logs delete-log-group \
   --log-group-name "aws-controltower/CloudTrailLogs" \
   --region "$REGION" 2>/dev/null || true
 echo "Residual resources cleaned."
 
 echo ""
-echo "=== STEP 6: DISABLING RESOURCE CONTROL POLICIES ==="
+echo "=== STEP 7: DISABLING RESOURCE CONTROL POLICIES ==="
 # RCPs were enabled explicitly by this project's create.sh — disable them here.
 # SCPs were enabled by Control Tower and will be disabled when CT is removed.
 ROOT_ID_DEL=$(aws organizations list-roots --query 'Roots[0].Id' --output text)
@@ -182,18 +206,10 @@ else
 fi
 
 echo ""
-echo "=== STEP 7: DELETING CLOUDFORMATION STACKS ==="
-aws cloudformation delete-stack --stack-name acme-guardrails --region "$REGION" 2>/dev/null || true
-aws cloudformation wait stack-delete-complete --stack-name acme-guardrails --region "$REGION" 2>/dev/null || true
-
-aws cloudformation delete-stack --stack-name acme-accounts --region "$REGION" 2>/dev/null || true
-aws cloudformation wait stack-delete-complete --stack-name acme-accounts --region "$REGION" 2>/dev/null || true
-
-aws cloudformation delete-stack --stack-name acme-ous --region "$REGION" 2>/dev/null || true
-aws cloudformation wait stack-delete-complete --stack-name acme-ous --region "$REGION" 2>/dev/null || true
-
-aws cloudformation delete-stack --stack-name acme-iam-roles --region "$REGION" 2>/dev/null || true
-aws cloudformation wait stack-delete-complete --stack-name acme-iam-roles --region "$REGION" 2>/dev/null || true
+echo "=== STEP 8: DELETING REMAINING CLOUDFORMATION STACKS ==="
+delete_stack_if_exists "${PROJECT_PREFIX_LOWER}-accounts"
+delete_stack_if_exists "${PROJECT_PREFIX_LOWER}-ous"
+delete_stack_if_exists "${PROJECT_PREFIX_LOWER}-iam-roles"
 echo "CloudFormation stacks deleted."
 
 echo ""

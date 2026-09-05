@@ -63,8 +63,10 @@ Resources:
         access sensitive resources. Implements the identity data perimeter.
       Type: RESOURCE_CONTROL_POLICY
       TargetIds:
-        - !ImportValue InfrastructureOUId
-        - !ImportValue WorkloadsOUId
+        - !ImportValue
+            'Fn::Sub': '${ProjectPrefixLower}-org-InfrastructureOUId'
+        - !ImportValue
+            'Fn::Sub': '${ProjectPrefixLower}-org-WorkloadsOUId'
       Content:
         Version: '2012-10-17'
         Statement:

@@ -1,6 +1,18 @@
 #!/bin/bash
 
 # =============================================================================
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CONFIG_FILE="${CONFIG_FILE:-$PROJECT_ROOT/config/local.env}"
+
+# Deployment-specific values live outside version control. The example file is
+# safe to publish; config/local.env is intentionally ignored by Git.
+if [ -f "$CONFIG_FILE" ]; then
+  # shellcheck disable=SC1090
+  set -a
+  source "$CONFIG_FILE"
+  set +a
+fi
 # Script  : common/validate.sh
 # Purpose : Shared validations — sourced by all domain start.sh scripts.
 #
@@ -65,5 +77,5 @@ fi
 
 if [ -z "$PROJECT_PREFIX" ]; then
   PROJECT_PREFIX="Acme"
-  export PROJECT_PREFIX
 fi
+export PROJECT_PREFIX

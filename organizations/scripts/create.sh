@@ -6,6 +6,25 @@ CFN_DIR="$SCRIPTS_DIR/../cloudformation"
 
 PROJECT_PREFIX_LOWER=$(echo "$PROJECT_PREFIX" | tr '[:upper:]' '[:lower:]')
 
+require_config() {
+  local VARIABLE_NAME="$1"
+  local VARIABLE_VALUE="${!VARIABLE_NAME}"
+  if [ -z "$VARIABLE_VALUE" ]; then
+    echo "ERROR: Required configuration '$VARIABLE_NAME' is empty."
+    echo "Copy config/example.env to config/local.env and complete all values."
+    exit 1
+  fi
+}
+
+for VARIABLE_NAME in \
+  AUDIT_ACCOUNT_EMAIL LOG_ARCHIVE_ACCOUNT_EMAIL \
+  NETWORK_ACCOUNT_EMAIL NETWORK_SSO_EMAIL NETWORK_SSO_FIRST_NAME NETWORK_SSO_LAST_NAME \
+  SHARED_SERVICES_ACCOUNT_EMAIL SHARED_SERVICES_SSO_EMAIL SHARED_SERVICES_SSO_FIRST_NAME SHARED_SERVICES_SSO_LAST_NAME \
+  DEV_ACCOUNT_EMAIL DEV_SSO_EMAIL DEV_SSO_FIRST_NAME DEV_SSO_LAST_NAME \
+  PROD_ACCOUNT_EMAIL PROD_SSO_EMAIL PROD_SSO_FIRST_NAME PROD_SSO_LAST_NAME; do
+  require_config "$VARIABLE_NAME"
+done
+
 # Look at https://docs.aws.amazon.com/controltower/latest/userguide/release-notes.html
 LZ_VERSION="4.0"
 
@@ -42,7 +61,7 @@ fi
 echo ""
 echo "=== STEP 2: CREATING IAM ROLES ==="
 aws cloudformation deploy \
-  --stack-name acme-iam-roles \
+  --stack-name "${PROJECT_PREFIX_LOWER}-iam-roles" \
   --template-file "$CFN_DIR/1-iam-roles.yaml" \
   --capabilities CAPABILITY_NAMED_IAM \
   --region "$REGION"
@@ -51,24 +70,25 @@ echo "IAM roles created successfully."
 echo ""
 echo "=== STEP 3: CREATING OUs ==="
 aws cloudformation deploy \
-  --stack-name acme-ous \
+  --stack-name "${PROJECT_PREFIX_LOWER}-ous" \
   --template-file "$CFN_DIR/2-ous.yaml" \
   --parameter-overrides \
     RootId="$ROOT_ID" \
-    ProjectPrefix="$PROJECT_PREFIX" \
     ProjectPrefixLower="$PROJECT_PREFIX_LOWER" \
+    AuditEmail="$AUDIT_ACCOUNT_EMAIL" \
+    LogArchiveEmail="$LOG_ARCHIVE_ACCOUNT_EMAIL" \
   --region "$REGION"
 echo "OUs created successfully."
 
 echo ""
 echo "=== STEP 4: CREATING SECURITY ACCOUNTS ==="
 AUDIT_ID=$(aws cloudformation describe-stacks \
-  --stack-name acme-ous \
+  --stack-name "${PROJECT_PREFIX_LOWER}-ous" \
   --region "$REGION" \
   --query 'Stacks[0].Outputs[?OutputKey==`AuditAccountId`].OutputValue' --output text)
 
 LOG_ARCHIVE_ID=$(aws cloudformation describe-stacks \
-  --stack-name acme-ous \
+  --stack-name "${PROJECT_PREFIX_LOWER}-ous" \
   --region "$REGION" \
   --query 'Stacks[0].Outputs[?OutputKey==`LogArchiveAccountId`].OutputValue' --output text)
 
@@ -196,11 +216,28 @@ ARTIFACT_ID=$(aws servicecatalog list-provisioning-artifacts \
   --output text)
 
 aws cloudformation deploy \
-  --stack-name acme-accounts \
+  --stack-name "${PROJECT_PREFIX_LOWER}-accounts" \
   --template-file "$CFN_DIR/3-accounts.yaml" \
   --parameter-overrides \
     AccountFactoryProductId="$PRODUCT_ID" \
     AccountFactoryArtifactId="$ARTIFACT_ID" \
+    ProjectPrefixLower="$PROJECT_PREFIX_LOWER" \
+    NetworkAccountEmail="$NETWORK_ACCOUNT_EMAIL" \
+    NetworkUserEmail="$NETWORK_SSO_EMAIL" \
+    NetworkUserFirstName="$NETWORK_SSO_FIRST_NAME" \
+    NetworkUserLastName="$NETWORK_SSO_LAST_NAME" \
+    SharedServicesAccountEmail="$SHARED_SERVICES_ACCOUNT_EMAIL" \
+    SharedServicesUserEmail="$SHARED_SERVICES_SSO_EMAIL" \
+    SharedServicesUserFirstName="$SHARED_SERVICES_SSO_FIRST_NAME" \
+    SharedServicesUserLastName="$SHARED_SERVICES_SSO_LAST_NAME" \
+    DevAccountEmail="$DEV_ACCOUNT_EMAIL" \
+    DevUserEmail="$DEV_SSO_EMAIL" \
+    DevUserFirstName="$DEV_SSO_FIRST_NAME" \
+    DevUserLastName="$DEV_SSO_LAST_NAME" \
+    ProdAccountEmail="$PROD_ACCOUNT_EMAIL" \
+    ProdUserEmail="$PROD_SSO_EMAIL" \
+    ProdUserFirstName="$PROD_SSO_FIRST_NAME" \
+    ProdUserLastName="$PROD_SSO_LAST_NAME" \
   --region "$REGION"
 echo "All accounts created and enrolled successfully."
 
@@ -209,7 +246,9 @@ echo "=== STEP 9: APPLYING GUARDRAILS ==="
 aws cloudformation deploy \
   --stack-name "${PROJECT_PREFIX_LOWER}-org-guardrails" \
   --template-file "$CFN_DIR/4-guardrails.yaml" \
-  --parameter-overrides Region="$REGION" \
+  --parameter-overrides \
+    Region="$REGION" \
+    ProjectPrefixLower="$PROJECT_PREFIX_LOWER" \
   --region "$REGION"
 echo "Guardrails applied successfully."
 
@@ -219,7 +258,6 @@ aws cloudformation deploy \
   --stack-name "${PROJECT_PREFIX_LOWER}-org-scps" \
   --template-file "$CFN_DIR/5-scps.yaml" \
   --parameter-overrides \
-    RootId="$ROOT_ID" \
     ProjectPrefix="$PROJECT_PREFIX" \
     ProjectPrefixLower="$PROJECT_PREFIX_LOWER" \
   --region "$REGION"

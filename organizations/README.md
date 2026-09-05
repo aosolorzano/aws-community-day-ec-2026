@@ -3,7 +3,19 @@
 Automates AWS Organizations and Control Tower setup: Landing Zone, OUs,
 accounts via Account Factory, guardrails, and Service Control Policies.
 
-![](../common/images/Organizations_with_ControlTower.png)
+```mermaid
+flowchart TD
+  M[Management account] --> S[Security OU]
+  M --> I[Infrastructure OU]
+  M --> W[Workloads OU]
+  M --> X[Suspended OU]
+  S --> A[Audit account]
+  S --> L[Log Archive account]
+  I --> N[Network account]
+  I --> SS[Shared Services account]
+  W --> D[Dev account]
+  W --> P[Prod account]
+```
 
 See the main [README](../README.md) for project overview.
 
@@ -18,12 +30,14 @@ See the main [README](../README.md) for project overview.
 
 ## Prerequisites
 
-1. An AWS Organization must exist before running any script.
+1. Copy `config/example.env` to `config/local.env` and complete every account
+   and SSO user value. The local file is excluded from Git.
+2. An AWS Organization must exist before running any script.
    ```bash
    aws organizations create-organization --feature-set ALL
    ```
-2. Request a quota increase for "Maximum number of accounts" to at least 15 via Service Quotas before provisioning accounts.
-3. Wait for the quota increase to be approved.
+3. Request a quota increase for "Maximum number of accounts" to at least 15 via Service Quotas before provisioning accounts.
+4. Wait for the quota increase to be approved.
 
 ## Usage
 
@@ -117,17 +131,17 @@ The following values are exported for use by other domains:
 
 | Export Name | Value |
 |---|---|
-| `SecurityOUId` | Security OU ID |
-| `InfrastructureOUId` | Infrastructure OU ID |
-| `InfrastructureOUArn` | Infrastructure OU ARN |
-| `WorkloadsOUId` | Workloads OU ID |
-| `WorkloadsOUArn` | Workloads OU ARN |
-| `AuditAccountId` | Audit account ID |
-| `LogArchiveAccountId` | Log Archive account ID |
-| `acme-accounts-NetworkAccountId` | Network account ID |
-| `acme-accounts-SharedServicesAccountId` | Shared Services account ID |
-| `acme-accounts-DevAccountId` | Dev account ID |
-| `acme-accounts-ProdAccountId` | Prod account ID |
+| `<prefix>-org-SecurityOUId` | Security OU ID |
+| `<prefix>-org-InfrastructureOUId` | Infrastructure OU ID |
+| `<prefix>-org-InfrastructureOUArn` | Infrastructure OU ARN |
+| `<prefix>-org-WorkloadsOUId` | Workloads OU ID |
+| `<prefix>-org-WorkloadsOUArn` | Workloads OU ARN |
+| `<prefix>-org-AuditAccountId` | Audit account ID |
+| `<prefix>-org-LogArchiveAccountId` | Log Archive account ID |
+| `<prefix>-accounts-NetworkAccountId` | Network account ID |
+| `<prefix>-accounts-SharedServicesAccountId` | Shared Services account ID |
+| `<prefix>-accounts-DevAccountId` | Dev account ID |
+| `<prefix>-accounts-ProdAccountId` | Prod account ID |
 
 ## Concepts
 

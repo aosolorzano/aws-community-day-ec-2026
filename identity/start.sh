@@ -22,7 +22,7 @@ while true; do
   echo "  1) Create      - Deploy all domain resources"
   echo "  2) Update      - Re-deploy and apply changes"
   echo "  3) Delete      - Remove all domain resources"
-  echo "  4) Enable SCIM - Automatic provisioning from Entra ID"
+  echo "  4) SCIM Guide  - Manual provisioning setup for Entra ID"
   echo ""
   echo "  q) Quit"
   echo ""

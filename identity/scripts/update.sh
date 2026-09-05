@@ -95,7 +95,6 @@ aws cloudformation deploy \
   --template-file "$CFN_DIR/3-assignments.yaml" \
   --parameter-overrides \
     InstanceArn="$INSTANCE_ARN" \
-    ProjectPrefix="$PROJECT_PREFIX" \
     ProjectPrefixLower="$PROJECT_PREFIX_LOWER" \
   --region "$REGION" \
   --no-fail-on-empty-changeset

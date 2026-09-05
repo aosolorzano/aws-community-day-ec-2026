@@ -4,7 +4,20 @@ Manages IAM Identity Center configuration for the platform:
 Permission Sets, group-based access control, and account assignments.
 Built on top of the Identity Center baseline created by Control Tower.
 
-![](../common/images/IdentityCenter_with_ControlTower.png)
+```mermaid
+flowchart LR
+  E[Microsoft Entra ID] -->|SAML authentication| I[IAM Identity Center]
+  C[CloudFormation] --> P[Permission Sets]
+  C --> G[Groups]
+  C --> A[Account assignments]
+  B[Bash orchestration] --> C
+  I --> G
+  G --> A
+  P --> A
+  A --> O[AWS accounts]
+  I -->|email session tag| AB[ABAC enforcement]
+  AB --> O
+```
 
 See the main [README](../README.md) for project overview.
 
@@ -24,13 +37,15 @@ Account Factory assignments).
 
 Before running any script in this domain:
 
-1. **Organizations domain deployed** — the `acme-accounts` stack must exist and
+1. **Local configuration completed** — copy `config/example.env` to
+   `config/local.env` and define the four SSO user email values.
+2. **Organizations domain deployed** — the `<prefix>-accounts` stack must exist and
    export `NetworkAccountId`, `SharedServicesAccountId`, `DevAccountId`, and
    `ProdAccountId`.
-2. **Entra ID configured as external IdP** — this is a manual step completed
+3. **Entra ID configured as external IdP** — this is a manual step completed
    once before running these scripts. See the Entra ID integration notes in
    `.kiro/steering/project-context.md`.
-3. **SSO users exist in Identity Center** — created automatically by Account
+4. **SSO users exist in Identity Center** — created automatically by Account
    Factory when accounts were provisioned (one user per account).
 
 ## Access Design
@@ -108,7 +123,8 @@ To authenticate, run:
 aws sso login --sso-session your-org
 ```
 
-This opens the browser, authenticates via your external IdP (MFA included),
+This opens the browser and authenticates through the external IdP (including
+MFA when it is required by the IdP policy),
 and stores temporary credentials locally. Credentials are valid for the
 session duration defined in the Permission Set
 (8h for `AcmePlatformAdmin` and `AcmeDeveloperAccess`, 4h for `AcmeReadOnlyAccess`).
@@ -155,7 +171,7 @@ identity/
 │   ├── create.sh              # Deploy all domain resources (Steps 1-8)
 │   ├── update.sh              # Re-deploy and apply changes (Steps 1-5)
 │   ├── delete.sh              # Remove all domain resources (Steps 1-6)
-│   └── enable-scim.sh         # Enable automatic provisioning from Entra ID
+│   └── enable-scim.sh         # Display the manual SCIM setup guide
 └── cloudformation/
     ├── 1-permission-sets.yaml # AcmePlatformAdmin, AcmeDeveloperAccess, AcmeReadOnlyAccess
     ├── 2-groups.yaml          # Acme-* groups

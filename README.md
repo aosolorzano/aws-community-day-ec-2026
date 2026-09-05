@@ -27,7 +27,7 @@ implemented here too.
 
 **What you will find in this repo:**
 
-- A fully working Control Tower Landing Zone deployment, automated end-to-end
+- A reusable Control Tower Landing Zone reference with automated deployment workflows
 - Account Factory provisioning for 6 accounts across 4 Organizational Units
 - Identity Center with group-based access, Permission Sets, and Attribute-Based
   Access Control (ABAC) tied to the user's email from the Entra ID SAML assertion
@@ -72,10 +72,11 @@ Developer (laptop)
 
 ## Key Design Decisions
 
-**CloudFormation first.** Every AWS resource is defined in a CloudFormation
-template. Bash scripts only orchestrate: they resolve runtime values, invoke
-`aws cloudformation deploy`, and poll for async operations. Nothing is created
-by hand or by script directly.
+**CloudFormation first.** Resources are defined in CloudFormation whenever AWS
+provides a supported resource type. Bash resolves runtime values, invokes
+`aws cloudformation deploy`, polls asynchronous operations, and handles the few
+operations CloudFormation cannot model, such as Identity Store memberships and
+enabling an Organizations policy type.
 
 **ABAC via identity-enhanced sessions.** The `AcmeDeveloperAccess` Permission
 Set enforces resource ownership at the policy level: developers can only modify
@@ -124,6 +125,16 @@ already enrolled in Control Tower — no manual baseline enrollment needed.
 
 ### Running the project
 
+Create a local deployment configuration first:
+
+```bash
+cp config/example.env config/local.env
+```
+
+Complete every value in `config/local.env`. This file contains account and SSO
+user details and is excluded from Git. The published templates intentionally do
+not include deployable email addresses or personal identities.
+
 ```bash
 ./start.sh
 ```
@@ -152,7 +163,7 @@ Each domain has its own menu with Create, Update, and Delete options. Press
 
 ```bash
 # With environment variables already set
-AWS_PROFILE=acme-mgmt REGION=us-east-1 bash identity/start.sh
+AWS_PROFILE=management-admin REGION=us-east-1 bash identity/start.sh
 
 # Or let the script prompt for them
 bash organizations/start.sh
@@ -167,6 +178,8 @@ bash organizations/start.sh
 ├── start.sh                    # Main entry point — launches domain menus
 ├── common/
 │   └── validate.sh             # Shared validations (profile, region, credentials)
+├── config/
+│   └── example.env             # Public template; copy to ignored local.env
 ├── organizations/
 │   ├── start.sh                # Domain menu
 │   ├── scripts/                # create.sh, update.sh, delete.sh
@@ -180,7 +193,7 @@ bash organizations/start.sh
 │       └── 6-rcps.yaml         # Resource Control Policies
 ├── identity/
 │   ├── start.sh                # Domain menu
-│   ├── scripts/                # create.sh, update.sh, delete.sh, enable-scim.sh
+│   ├── scripts/                # create.sh, update.sh, delete.sh, SCIM setup guide
 │   ├── common/                 # resolve-instance.sh
 │   └── cloudformation/
 │       ├── 1-permission-sets.yaml  # AcmePlatformAdmin, AcmeDeveloperAccess, AcmeReadOnlyAccess
@@ -202,8 +215,6 @@ that Kiro loads to understand the project:
 | `project-context.md` | Always | Architecture, account structure, SSO design, Control Tower config |
 | `conventions.md` | Always | Naming rules, script patterns, CFN conventions, menu style |
 | `learnings.md` | Manual | Hard-won lessons per AWS service — load before working on a domain |
-| `tech-debt.md` | Manual | Known deviations from conventions and how to fix them |
-| `roadmap.md` | Manual | Domain status and features to evaluate |
 
 `inclusion: always` means Kiro loads the file automatically in every session.
 `inclusion: manual` means the file is only loaded when explicitly referenced

@@ -6,12 +6,6 @@ Parameters:
     Type: String
     Description: ARN of the IAM Identity Center instance
 
-  ProjectPrefix:
-    Type: String
-    Default: Acme
-    Description: >
-      Prefix used for resource names. Must match the value in the other stacks.
-
   ProjectPrefixLower:
     Type: String
     Default: acme
@@ -34,7 +28,8 @@ Resources:
       PrincipalId: !ImportValue
         'Fn::Sub': '${ProjectPrefixLower}-identity-InfrastructureAdminsGroupId'
       TargetType: AWS_ACCOUNT
-      TargetId: !ImportValue acme-accounts-NetworkAccountId
+      TargetId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-accounts-NetworkAccountId'
 
   # ==============================================================================
   # PLATFORM ADMINS → AcmePlatformAdmin → Shared Services
@@ -49,7 +44,8 @@ Resources:
       PrincipalId: !ImportValue
         'Fn::Sub': '${ProjectPrefixLower}-identity-PlatformAdminsGroupId'
       TargetType: AWS_ACCOUNT
-      TargetId: !ImportValue acme-accounts-SharedServicesAccountId
+      TargetId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-accounts-SharedServicesAccountId'
 
   # ==============================================================================
   # DEVELOPERS → AcmeDeveloperAccess → Dev
@@ -64,7 +60,8 @@ Resources:
       PrincipalId: !ImportValue
         'Fn::Sub': '${ProjectPrefixLower}-identity-DevelopersGroupId'
       TargetType: AWS_ACCOUNT
-      TargetId: !ImportValue acme-accounts-DevAccountId
+      TargetId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-accounts-DevAccountId'
 
   # ==============================================================================
   # DEVELOPERS → AcmeReadOnlyAccess → Prod
@@ -79,7 +76,8 @@ Resources:
       PrincipalId: !ImportValue
         'Fn::Sub': '${ProjectPrefixLower}-identity-DevelopersGroupId'
       TargetType: AWS_ACCOUNT
-      TargetId: !ImportValue acme-accounts-ProdAccountId
+      TargetId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-accounts-ProdAccountId'
 
   # ==============================================================================
   # OPERATIONS → AcmePlatformAdmin → Prod
@@ -94,7 +92,8 @@ Resources:
       PrincipalId: !ImportValue
         'Fn::Sub': '${ProjectPrefixLower}-identity-OperationsGroupId'
       TargetType: AWS_ACCOUNT
-      TargetId: !ImportValue acme-accounts-ProdAccountId
+      TargetId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-accounts-ProdAccountId'
 
   # ==============================================================================
   # OPERATIONS → AcmeReadOnlyAccess → Dev
@@ -109,4 +108,5 @@ Resources:
       PrincipalId: !ImportValue
         'Fn::Sub': '${ProjectPrefixLower}-identity-OperationsGroupId'
       TargetType: AWS_ACCOUNT
-      TargetId: !ImportValue acme-accounts-DevAccountId
+      TargetId: !ImportValue
+        'Fn::Sub': '${ProjectPrefixLower}-accounts-DevAccountId'

@@ -23,6 +23,7 @@ CLAUDE.md
 
 # AWS
 landing-zone-manifest.json
+config/local.env
 
 # Temp
 *.log

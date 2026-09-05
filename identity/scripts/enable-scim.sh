@@ -1,11 +1,9 @@
 #!/bin/bash
 set -e
 
-SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
-
 # =============================================================================
 # Script  : identity/scripts/enable-scim.sh
-# Purpose : Enable automatic provisioning (SCIM) in Identity Center.
+# Purpose : Explain the manual provisioning (SCIM) setup in Identity Center.
 #           SCIM synchronizes users and groups from an external identity
 #           provider (e.g. Microsoft Entra ID) to Identity Center automatically.
 #
@@ -34,46 +32,28 @@ echo "    1. Copy the generated SCIM endpoint URL and access token."
 echo "    2. Configure them in Entra ID under:"
 echo "       Enterprise Applications → AWS IAM Identity Center → Provisioning."
 echo ""
-read -r -p "  Do you want to enable SCIM? [y/N]: " CONFIRM
+read -r -p "  Do you want to display the SCIM setup guide? [y/N]: " CONFIRM
 echo ""
 
 if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
-  echo "  SCIM activation cancelled."
+  echo "  SCIM setup guide cancelled."
   exit 0
 fi
 
-echo "=== RESOLVING IDENTITY CENTER INSTANCE ==="
-source "$SCRIPTS_DIR/../common/resolve-instance.sh"
-
 echo ""
-echo "=== ENABLING SCIM PROVISIONING ==="
-SCIM_RESPONSE=$(aws sso-admin create-access-token \
-  --instance-arn "$INSTANCE_ARN" \
-  --region "$REGION" 2>/dev/null || echo "UNSUPPORTED")
-
-if [ "$SCIM_RESPONSE" = "UNSUPPORTED" ]; then
-  # SCIM is enabled via the Identity Center console or the
-  # PUT /instances/{instanceArn}/scim endpoint (not yet in AWS CLI).
-  # Instruct the user to complete this step manually.
-  echo ""
-  echo "  The AWS CLI does not currently support enabling SCIM provisioning"
-  echo "  directly. Complete the following steps in the AWS console:"
-  echo ""
-  echo "    1. Open IAM Identity Center → Settings → Automatic provisioning."
-  echo "    2. Click 'Enable' to generate the SCIM endpoint and access token."
-  echo "    3. Copy the SCIM endpoint URL and the access token."
-  echo "    4. In Entra ID, open:"
-  echo "         Enterprise Applications → AWS IAM Identity Center → Provisioning"
-  echo "    5. Set Provisioning Mode to 'Automatic'."
-  echo "    6. Paste the SCIM endpoint URL into 'Tenant URL'."
-  echo "    7. Paste the access token into 'Secret Token'."
-  echo "    8. Click 'Test Connection', then 'Save'."
-  echo ""
-  echo "  Once configured, Entra ID will begin synchronizing users and groups"
-  echo "  to Identity Center automatically."
-else
-  echo "SCIM provisioning enabled."
-  echo ""
-  echo "  Copy the following values and configure them in Entra ID:"
-  echo "  $SCIM_RESPONSE"
-fi
+echo "=== SCIM SETUP GUIDE ==="
+echo ""
+echo "  SCIM provisioning is configured manually because the setup generates"
+echo "  a sensitive access token that must never be printed or committed."
+echo ""
+echo "  1. Open IAM Identity Center → Settings → Automatic provisioning."
+echo "  2. Click 'Enable' to generate the SCIM endpoint and access token."
+echo "  3. Store both values in an approved secrets manager."
+echo "  4. In Entra ID, open:"
+echo "       Enterprise Applications → AWS IAM Identity Center → Provisioning"
+echo "  5. Set Provisioning Mode to 'Automatic'."
+echo "  6. Paste the SCIM endpoint URL into 'Tenant URL'."
+echo "  7. Paste the access token into 'Secret Token'."
+echo "  8. Test the connection, save, and enable provisioning."
+echo ""
+echo "  Never add the SCIM endpoint or access token to this repository."

@@ -12,7 +12,9 @@ This project serves three simultaneous purposes:
 2. **Future MVP** — the architecture is designed to be commercially scalable, not just a lab exercise.
 3. **Technical reference** — each domain produces a clean, documented implementation that can serve as a reference for articles and public repos.
 
-**Design principle**: always apply enterprise best practices, regardless of current scale. If a feature is a best practice for a large enterprise (ABAC, session policies, tagging strategies, least-privilege policies, etc.), it is implemented here — even if the immediate environment only has 4 users or 2 accounts. The goal is real-world experience, not a minimal viable configuration.
+**Design principle**: apply enterprise practices regardless of lab scale. Relevant
+capabilities such as ABAC, tagging strategies, least-privilege policies, and
+multi-account isolation are evaluated as part of the reference architecture.
 
 This means: when a new AWS feature or capability is relevant to a domain, it should be evaluated and implemented if it represents a best practice — not deferred because the project is small.
 
@@ -63,7 +65,10 @@ All infrastructure scripts in this project are executed by the **Management acco
 - Is responsible for deploying all domains: Organizations, Identity.
 - Must NOT be added to Identity Center groups for daily use — Management account access must remain exceptional and audited.
 
-The SSO users (Sheldon, Leonard, Howard, Raj) are end users who access workload accounts via Identity Center after the Identity domain is deployed. They are not involved in running infrastructure scripts.
+The SSO users are role-based personas who access workload accounts through
+Identity Center after the Identity domain is deployed. Their deployment-specific
+names and email addresses are supplied through `config/local.env`; they are not
+involved in running infrastructure scripts.
 
 ## Account Provisioning
 
@@ -80,14 +85,14 @@ and their UPN must match the SSO email used in Account Factory.
 
 ### User — Account — Profile mapping
 
-| User | SSO Email | Account | Account ID | CLI Profile | Permission Set |
+| Persona | SSO email variable | Account | Account ID | CLI profile example | Permission Set |
 |------|-----------|---------|-----------|-------------|----------------|
-| Sheldon Cooper | `sheldon.cooper@example.com` | Network | `<your-network-account-id>` | `sheldon-network` | `AcmePlatformAdmin` |
-| Leonard Hofstadter | `leonard.hofstadter@example.com` | Shared Services | `<your-shared-services-account-id>` | `leonard-shared` | `AcmePlatformAdmin` |
-| Howard Wolowitz | `howard.wolowitz@example.com` | Dev | `<your-dev-account-id>` | `howard-dev` | `AcmeDeveloperAccess` |
-| Howard Wolowitz | `howard.wolowitz@example.com` | Prod | `<your-prod-account-id>` | `howard-prod` | `AcmeReadOnlyAccess` |
-| Raj Koothrappali | `raj.koothrappali@example.com` | Prod | `<your-prod-account-id>` | `raj-prod` | `AcmePlatformAdmin` |
-| Raj Koothrappali | `raj.koothrappali@example.com` | Dev | `<your-dev-account-id>` | `raj-dev` | `AcmeReadOnlyAccess` |
+| Infrastructure administrator | `NETWORK_SSO_EMAIL` | Network | `<network-account-id>` | `infra-network` | `AcmePlatformAdmin` |
+| Platform administrator | `SHARED_SERVICES_SSO_EMAIL` | Shared Services | `<shared-services-account-id>` | `platform-shared` | `AcmePlatformAdmin` |
+| Developer | `DEV_SSO_EMAIL` | Dev | `<dev-account-id>` | `developer-dev` | `AcmeDeveloperAccess` |
+| Developer | `DEV_SSO_EMAIL` | Prod | `<prod-account-id>` | `developer-prod` | `AcmeReadOnlyAccess` |
+| Operations engineer | `PROD_SSO_EMAIL` | Prod | `<prod-account-id>` | `operations-prod` | `AcmePlatformAdmin` |
+| Operations engineer | `PROD_SSO_EMAIL` | Dev | `<dev-account-id>` | `operations-dev` | `AcmeReadOnlyAccess` |
 
 All SSO profiles use `sso_session = aws-demo` in `~/.aws/config`. Sessions are
 activated with `aws sso login --sso-session aws-demo` before running any script
@@ -97,12 +102,12 @@ that targets a workload account.
 
 | Account | Email |
 |---------|-------|
-| Audit | `aws-sec-audit@example.cloud` |
-| Log Archive | `aws-sec-log@example.cloud` |
-| Network | `aws-network-account@example.cloud` |
-| Shared Services | `aws-shared-account@example.cloud` |
-| Dev | `aws-dev-account@example.cloud` |
-| Prod | `aws-prod-account@example.cloud` |
+| Audit | `AUDIT_ACCOUNT_EMAIL` |
+| Log Archive | `LOG_ARCHIVE_ACCOUNT_EMAIL` |
+| Network | `NETWORK_ACCOUNT_EMAIL` |
+| Shared Services | `SHARED_SERVICES_ACCOUNT_EMAIL` |
+| Dev | `DEV_ACCOUNT_EMAIL` |
+| Prod | `PROD_ACCOUNT_EMAIL` |
 
 ### CLI profile per domain script
 
@@ -111,9 +116,9 @@ account operations. They use the account-specific SSO profile directly:
 
 | Domain script operation | Profile used |
 |------------------------|-------------|
-| Organizations / Identity | `acme-mgmt` (IAM static keys — Management account) |
+| Organizations / Identity | operator-selected profile (IAM credentials — Management account) |
 
-`AWS_PROFILE` (set by `start.sh`) is the Management account profile (`acme-mgmt`)
+`AWS_PROFILE` (set by `start.sh`) is the Management account profile
 and is used only by Organizations and Identity domain scripts.
 
 ## Control Tower Configuration
@@ -133,14 +138,14 @@ and is used only by Organizations and Identity domain scripts.
 
 - Identity source: External identity provider (Microsoft Entra ID)
 - Protocol: SAML 2.0
-- SCIM: Not available (requires Entra ID P1 — current subscription is Office 365 Business Standard / Entra ID Free)
+- SCIM: Optional; Microsoft Entra ID provisioning requires a compatible P1 or P2 license
 - UPN in Entra ID must match SSO user email in Account Factory
 - Entra ID Free tier supports unlimited users for SSO (no M365 license needed per user)
-- **Entra ID integration is a manual step** — there are no scripts for it. It is a prerequisite that must be completed before the Identity domain scripts run. The configuration involves: registering AWS IAM Identity Center as an enterprise app in Entra ID, downloading the SAML metadata, and uploading it to Identity Center via the console. This step is already completed.
+- **Entra ID integration is a manual step** — there are no scripts for it. It is a prerequisite for the Identity domain. The configuration involves registering AWS IAM Identity Center as an enterprise application in Entra ID, exchanging SAML metadata, and validating the sign-in flow.
 - The Management account user is intentionally excluded from Identity Center — access to the Management account must remain exceptional and audited, not part of daily SSO usage.
 - **Entra ID groups are NOT synchronized to Identity Center** — without SCIM (requires Entra ID P1), groups defined in Entra ID never reach Identity Center. Groups in Identity Center are managed independently via CloudFormation and scripts.
 - **Role of each system**: Entra ID handles authentication only (validates who the user is via SAML assertion). Identity Center handles authorization (groups, Permission Sets, account assignments). The two group namespaces are completely separate.
-- **Design decision**: In a production enterprise environment, both users AND groups should be synchronized from Entra ID to Identity Center via SCIM — this provides a single source of truth for group membership, automatic offboarding, and centralized audit. This project manages groups directly in Identity Center as a cost-justified approximation (Entra ID P1 required for SCIM is ~$6/user/month and not warranted for a research lab).
+- **Design decision**: In a production enterprise environment, both users and groups should be synchronized from Entra ID to Identity Center through SCIM. This provides a single source of truth, automatic offboarding, and centralized audit. The reference keeps group management in Identity Center so it can also be evaluated without a SCIM-capable Entra ID license.
 
 ## Identity Domain Design
 
@@ -154,18 +159,20 @@ The `identity/` domain implements group-based access control on top of the Ident
 | `AcmeDeveloperAccess` | Custom inline policy | 8 hours | Service-scoped access for devs — no IAM, no billing |
 | `AcmeReadOnlyAccess` | `ReadOnlyAccess` (AWS managed) | 4 hours | Audit and observability access |
 
-All Permission Sets require MFA.
+MFA is enforced by the external identity provider or the Identity Center
+authentication settings. Permission Sets define authorization and session
+duration; they do not configure MFA themselves.
 
 ### Groups and Account Assignments
 
 | Group | Member | Permission Set | Account |
 |---|---|---|---|
-| `Acme-Infrastructure-Admins` | sheldon.cooper | `AcmePlatformAdmin` | Network |
-| `Acme-Platform-Admins` | leonard.hofstadter | `AcmePlatformAdmin` | Shared Services |
-| `Acme-Developers` | howard.wolowitz | `AcmeDeveloperAccess` | Dev |
-| `Acme-Developers` | howard.wolowitz | `AcmeReadOnlyAccess` | Prod |
-| `Acme-Operations` | raj.koothrappali | `AcmePlatformAdmin` | Prod |
-| `Acme-Operations` | raj.koothrappali | `AcmeReadOnlyAccess` | Dev |
+| `Acme-Infrastructure-Admins` | infrastructure administrator | `AcmePlatformAdmin` | Network |
+| `Acme-Platform-Admins` | platform administrator | `AcmePlatformAdmin` | Shared Services |
+| `Acme-Developers` | developer | `AcmeDeveloperAccess` | Dev |
+| `Acme-Developers` | developer | `AcmeReadOnlyAccess` | Prod |
+| `Acme-Operations` | operations engineer | `AcmePlatformAdmin` | Prod |
+| `Acme-Operations` | operations engineer | `AcmeReadOnlyAccess` | Dev |
 
 Design rationale:
 - Developers have full access in Dev but read-only in Prod — prevents accidental production changes.
@@ -202,7 +209,7 @@ The project is operated through a single entry point: `start.sh` at the root.
 ```
 
 On launch, `start.sh`:
-1. Prompts for **AWS profile** (default: `default`) — the Management account profile (`acme-mgmt`)
+1. Prompts for **AWS profile** (default: `default`) — the Management account operator profile
 2. Prompts for **AWS region** (default: `us-east-1`)
 3. Sets `PROJECT_PREFIX="Acme"` internally (not prompted — hardcoded)
 4. Sources `common/validate.sh` to verify the profile exists in `~/.aws/config` and `~/.aws/credentials`
@@ -230,7 +237,7 @@ On launch, `start.sh`:
 
 | Variable | Source | Example value |
 |----------|--------|---------------|
-| `AWS_PROFILE` | Prompted at startup | `acme-mgmt` |
+| `AWS_PROFILE` | Prompted at startup | `management-admin` |
 | `REGION` | Prompted at startup | `us-east-1` |
 | `PROJECT_PREFIX` | Hardcoded in `start.sh` | `Acme` |
 
@@ -250,7 +257,7 @@ prompts for them before proceeding.
 
 ```bash
 # Run a domain script directly
-AWS_PROFILE=acme-mgmt REGION=us-east-1 bash identity/start.sh
+AWS_PROFILE=management-admin REGION=us-east-1 bash identity/start.sh
 
 # Or let validate.sh prompt for them
 bash identity/start.sh

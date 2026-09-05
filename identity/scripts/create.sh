@@ -4,11 +4,20 @@ set -e
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 CFN_DIR="$SCRIPTS_DIR/../cloudformation"
 
+PROJECT_PREFIX_LOWER=$(echo "$PROJECT_PREFIX" | tr '[:upper:]' '[:lower:]')
+
+for VARIABLE_NAME in NETWORK_SSO_EMAIL SHARED_SERVICES_SSO_EMAIL DEV_SSO_EMAIL PROD_SSO_EMAIL; do
+  VARIABLE_VALUE="${!VARIABLE_NAME}"
+  if [ -z "$VARIABLE_VALUE" ]; then
+    echo "ERROR: Required configuration '$VARIABLE_NAME' is empty."
+    echo "Copy config/example.env to config/local.env and complete all values."
+    exit 1
+  fi
+done
+
 echo ""
 echo "=== STEP 1: RESOLVING IDENTITY CENTER INSTANCE ==="
 source "$SCRIPTS_DIR/../common/resolve-instance.sh"
-
-PROJECT_PREFIX_LOWER=$(echo "$PROJECT_PREFIX" | tr '[:upper:]' '[:lower:]')
 
 echo ""
 echo "=== STEP 2: ENABLING IDENTITY-ENHANCED SESSIONS ==="
@@ -79,7 +88,6 @@ aws cloudformation deploy \
   --template-file "$CFN_DIR/3-assignments.yaml" \
   --parameter-overrides \
     InstanceArn="$INSTANCE_ARN" \
-    ProjectPrefix="$PROJECT_PREFIX" \
     ProjectPrefixLower="$PROJECT_PREFIX_LOWER" \
   --region "$REGION"
 echo "Account assignments deployed successfully."
@@ -96,17 +104,21 @@ resolve_user_id() {
     --output text
 }
 
-SHELDON_ID=$(resolve_user_id "sheldon.cooper@example.com")
-LEONARD_ID=$(resolve_user_id "leonard.hofstadter@example.com")
-HOWARD_ID=$(resolve_user_id "howard.wolowitz@example.com")
-RAJ_ID=$(resolve_user_id "raj.koothrappali@example.com")
+INFRA_USER_ID=$(resolve_user_id "$NETWORK_SSO_EMAIL")
+PLATFORM_USER_ID=$(resolve_user_id "$SHARED_SERVICES_SSO_EMAIL")
+DEVELOPER_USER_ID=$(resolve_user_id "$DEV_SSO_EMAIL")
+OPERATIONS_USER_ID=$(resolve_user_id "$PROD_SSO_EMAIL")
 
-for NAME_ID in "sheldon.cooper:$SHELDON_ID" "leonard.hofstadter:$LEONARD_ID" "howard.wolowitz:$HOWARD_ID" "raj.koothrappali:$RAJ_ID"; do
-  NAME="${NAME_ID%%:*}"
-  ID="${NAME_ID##*:}"
+for ROLE_ID in \
+  "infrastructure administrator:$INFRA_USER_ID" \
+  "platform administrator:$PLATFORM_USER_ID" \
+  "developer:$DEVELOPER_USER_ID" \
+  "operations engineer:$OPERATIONS_USER_ID"; do
+  ROLE="${ROLE_ID%%:*}"
+  ID="${ROLE_ID##*:}"
   if [ -z "$ID" ] || [ "$ID" = "None" ]; then
-    echo "ERROR: User $NAME not found in Identity Store $IDENTITY_STORE_ID."
-    echo "Verify the user exists and that the email matches exactly."
+    echo "ERROR: The $ROLE user was not found in the Identity Store."
+    echo "Verify the corresponding SSO email in config/local.env."
     exit 1
   fi
 done
@@ -159,10 +171,10 @@ add_member() {
   fi
 }
 
-add_member "$INFRA_ADMINS_GROUP_ID"    "$SHELDON_ID" "${PROJECT_PREFIX}-Infrastructure-Admins"
-add_member "$PLATFORM_ADMINS_GROUP_ID" "$LEONARD_ID" "${PROJECT_PREFIX}-Platform-Admins"
-add_member "$DEVELOPERS_GROUP_ID"      "$HOWARD_ID"  "${PROJECT_PREFIX}-Developers"
-add_member "$OPERATIONS_GROUP_ID"      "$RAJ_ID"     "${PROJECT_PREFIX}-Operations"
+add_member "$INFRA_ADMINS_GROUP_ID"    "$INFRA_USER_ID"          "${PROJECT_PREFIX}-Infrastructure-Admins"
+add_member "$PLATFORM_ADMINS_GROUP_ID" "$PLATFORM_USER_ID"       "${PROJECT_PREFIX}-Platform-Admins"
+add_member "$DEVELOPERS_GROUP_ID"      "$DEVELOPER_USER_ID"      "${PROJECT_PREFIX}-Developers"
+add_member "$OPERATIONS_GROUP_ID"      "$OPERATIONS_USER_ID"     "${PROJECT_PREFIX}-Operations"
 
 echo ""
 echo "=== DONE. Identity domain fully deployed. ==="

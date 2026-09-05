@@ -6,14 +6,14 @@ inclusion: always
 
 ## Project Structure
 
-- Private monorepo with one directory per infrastructure domain
+- Public reference monorepo with one directory per infrastructure domain
 - Each domain is independent with its own scripts and templates
-- Public repos are clean snapshots (no real emails, no steering)
-- `.kiro/steering/` is global context — not copied to public repos
+- Public files contain no real email addresses, account identifiers, or secrets
+- `.kiro/steering/` is included as a sanitized example of persistent agent context
 
 ## Naming
 
-- Stack names: `acme-` + kebab-case for domain stacks (e.g. `acme-identity-groups`, `acme-org-guardrails`)
+- Stack names: lowercase project prefix + kebab-case (e.g. `acme-identity-groups`, `acme-org-guardrails`)
 - OU abbreviations: sec (Security), infra (Infrastructure), env (Workloads)
 - **Custom resource naming**: all project-owned resources (Permission Sets, groups, SCPs, IAM roles, etc.) use the `Acme` prefix to distinguish them from resources created by AWS tooling (Control Tower, Landing Zone, Account Factory). Examples: `AcmePlatformAdmin`, `Acme-Developers`, `AcmeDenySecurityServiceModifications`
 - Resources visible in the AWS console use `Acme` + PascalCase (e.g. `AcmePlatformAdmin`, `AcmeDenySecurityServiceModifications`)
@@ -41,7 +41,7 @@ inclusion: always
 - Use `--query` and `--output text` (never `| [0]` with text output)
 - Destructive operations (`delete.sh`) must require explicit confirmation with `[y/N]` prompt — default is `N` (cancel). Never default to yes on destructive operations.
 - **Input-first principle**: all user input must be collected at the beginning of the script, before any AWS operations start. Never prompt the user mid-execution. This allows the operator to answer all questions upfront and then leave the script to run unattended. Applies to any input: confirmation prompts, optional feature flags, runtime values like IP addresses or IDs that cannot be resolved automatically.
-- **Script output must be generic** — never print usernames, email addresses, personal names, or internal domain names in `echo` messages. Print resource types and statuses instead (e.g. `"Group memberships resolved."` not `"sheldon.cooper → group-id"`). Technical IDs (Account IDs, Operation IDs, ARNs) are acceptable when they have diagnostic value.
+- **Script output must be generic** — never print usernames, email addresses, personal names, or internal domain names in `echo` messages. Print resource types and statuses instead (e.g. `"Group memberships resolved."` not a user-to-group mapping). Technical IDs (Account IDs, Operation IDs, ARNs) are acceptable when they have diagnostic value.
 
 ## Shell Compatibility
 
@@ -128,7 +128,7 @@ Menu option naming rules:
   - `1) Create  - Deploy all domain resources`
   - `2) Update  - Re-deploy and apply changes`
   - `3) Delete  - Remove all domain resources`
-- Feature-specific options (e.g. `Enable SCIM`, `Rotate credentials`) may use specific names since they describe a distinct, named operation.
+- Feature-specific options (e.g. `SCIM Guide`, `Rotate credentials`) may use specific names since they describe a distinct, named operation.
 
 ## CloudFormation
 

@@ -1,8 +1,8 @@
 # AWS Infrastructure — Agent Guide
 
-Private infrastructure-as-code repository that manages all AWS resources for a
-multi-account enterprise environment. Organized by domain, each with independent
-scripts and CloudFormation templates. The only AI tool used in this project is Kiro.
+Public infrastructure-as-code reference that manages AWS resources for a
+multi-account enterprise environment. It is organized by domain, each with
+independent Bash scripts and CloudFormation templates.
 
 ## Repository Structure
 
@@ -11,14 +11,16 @@ aws-infrastructure/
 ├── start.sh                   # Main entry point — launches domain menus
 ├── common/
 │   └── validate.sh            # Shared validations (AWS profile, region, credentials)
+├── config/
+│   └── example.env            # Safe template for deployment-specific values
 ├── organizations/             # Control Tower, OUs, accounts, guardrails, SCPs, RCPs
 │   ├── start.sh               # Domain menu (Create, Update, Delete)
 │   ├── scripts/               # create.sh, update.sh, delete.sh
 │   ├── common/                # register-and-enroll.sh
 │   └── cloudformation/        # 1-iam-roles, 2-ous, 3-accounts, 4-guardrails, 5-scps, 6-rcps
 ├── identity/                  # Identity Center, Permission Sets, groups, ABAC
-│   ├── start.sh               # Domain menu (Create, Update, Delete, Enable SCIM)
-│   ├── scripts/               # create.sh, update.sh, delete.sh, enable-scim.sh
+│   ├── start.sh               # Domain menu (Create, Update, Delete, SCIM guide)
+│   ├── scripts/               # create.sh, update.sh, delete.sh, SCIM setup guide
 │   ├── common/                # resolve-instance.sh
 │   └── cloudformation/        # 1-permission-sets, 2-groups, 3-assignments
 └── .kiro/steering/            # Kiro context files (always loaded)
@@ -77,7 +79,7 @@ Root
 
 - **Navigation**: `start.sh` (root) exports `AWS_PROFILE`, `REGION`, and `PROJECT_PREFIX`; domain
   scripts inherit them via environment. `common/validate.sh` prompts for them
-  only when running a domain script directly.
+  only when running a domain script directly and loads `config/local.env` when present.
 - **Account provisioning**: Security accounts via `AWS::Organizations::Account`;
   all others via Account Factory (`AWS::ServiceCatalog::CloudFormationProvisionedProduct`).
 - **Guardrails**: Global Control Catalog ARNs only — regional ARNs do not work.
@@ -90,5 +92,6 @@ Root
 - Read `conventions.md` before writing any script or CloudFormation template.
 - Read `learnings.md` before working on any AWS domain — contains hard-won lessons.
 - Read `project-context.md` for deep technical details (CT config, Account Factory, SSO).
+- Never commit `config/local.env`; use `config/example.env` as the public template.
 - Each domain is independent — changes in one domain should not affect others.
 - Do not duplicate validation logic — use `common/validate.sh`.

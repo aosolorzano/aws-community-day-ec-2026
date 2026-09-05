@@ -6,10 +6,6 @@ Description: >
   CT Lambda/SNS/EventBridge resources, root user access, region deny).
 
 Parameters:
-  RootId:
-    Type: String
-    Description: Root ID of the AWS Organization (e.g. r-xxxx)
-
   ProjectPrefix:
     Type: String
     Default: Acme
@@ -45,8 +41,10 @@ Resources:
         Analyzer, Security Hub, and CloudWatch alarms. Complements CT guardrails.
       Type: SERVICE_CONTROL_POLICY
       TargetIds:
-        - !ImportValue InfrastructureOUId
-        - !ImportValue WorkloadsOUId
+        - !ImportValue
+            'Fn::Sub': '${ProjectPrefixLower}-org-InfrastructureOUId'
+        - !ImportValue
+            'Fn::Sub': '${ProjectPrefixLower}-org-WorkloadsOUId'
       Content:
         Version: '2012-10-17'
         Statement:
@@ -133,8 +131,10 @@ Resources:
         Internal peering, Transit Gateway, and Global Accelerator are allowed.
       Type: SERVICE_CONTROL_POLICY
       TargetIds:
-        - !ImportValue InfrastructureOUId
-        - !ImportValue WorkloadsOUId
+        - !ImportValue
+            'Fn::Sub': '${ProjectPrefixLower}-org-InfrastructureOUId'
+        - !ImportValue
+            'Fn::Sub': '${ProjectPrefixLower}-org-WorkloadsOUId'
       Content:
         Version: '2012-10-17'
         Statement:
@@ -177,8 +177,10 @@ Resources:
         (Entra ID) and blocks creation of account-level IC instances.
       Type: SERVICE_CONTROL_POLICY
       TargetIds:
-        - !ImportValue InfrastructureOUId
-        - !ImportValue WorkloadsOUId
+        - !ImportValue
+            'Fn::Sub': '${ProjectPrefixLower}-org-InfrastructureOUId'
+        - !ImportValue
+            'Fn::Sub': '${ProjectPrefixLower}-org-WorkloadsOUId'
       Content:
         Version: '2012-10-17'
         Statement:

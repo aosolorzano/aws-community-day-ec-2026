@@ -15,11 +15,10 @@ CURRENT_ACCOUNTS=$(aws organizations list-accounts --query 'length(Accounts[])' 
 echo "Current accounts in the organization: $CURRENT_ACCOUNTS"
 
 aws cloudformation deploy \
-  --stack-name acme-ous \
+  --stack-name "${PROJECT_PREFIX_LOWER}-ous" \
   --template-file "$CFN_DIR/2-ous.yaml" \
   --parameter-overrides \
     RootId="$ROOT_ID" \
-    ProjectPrefix="$PROJECT_PREFIX" \
     ProjectPrefixLower="$PROJECT_PREFIX_LOWER" \
   --region "$REGION" \
   --no-fail-on-empty-changeset
@@ -59,11 +58,12 @@ ARTIFACT_ID=$(aws servicecatalog list-provisioning-artifacts \
   --output text)
 
 aws cloudformation deploy \
-  --stack-name acme-accounts \
+  --stack-name "${PROJECT_PREFIX_LOWER}-accounts" \
   --template-file "$CFN_DIR/3-accounts.yaml" \
   --parameter-overrides \
     AccountFactoryProductId="$PRODUCT_ID" \
     AccountFactoryArtifactId="$ARTIFACT_ID" \
+    ProjectPrefixLower="$PROJECT_PREFIX_LOWER" \
   --region "$REGION" \
   --no-fail-on-empty-changeset
 echo "Accounts updated successfully."
@@ -73,7 +73,9 @@ echo "=== STEP 5: APPLYING GUARDRAILS ==="
 aws cloudformation deploy \
   --stack-name "${PROJECT_PREFIX_LOWER}-org-guardrails" \
   --template-file "$CFN_DIR/4-guardrails.yaml" \
-  --parameter-overrides Region="$REGION" \
+  --parameter-overrides \
+    Region="$REGION" \
+    ProjectPrefixLower="$PROJECT_PREFIX_LOWER" \
   --region "$REGION" \
   --no-fail-on-empty-changeset
 echo "Guardrails applied successfully."
@@ -84,7 +86,6 @@ aws cloudformation deploy \
   --stack-name "${PROJECT_PREFIX_LOWER}-org-scps" \
   --template-file "$CFN_DIR/5-scps.yaml" \
   --parameter-overrides \
-    RootId="$ROOT_ID" \
     ProjectPrefix="$PROJECT_PREFIX" \
     ProjectPrefixLower="$PROJECT_PREFIX_LOWER" \
   --region "$REGION" \

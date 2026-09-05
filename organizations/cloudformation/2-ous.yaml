@@ -4,12 +4,14 @@ Description: Organizational Units and Security accounts
 Parameters:
   RootId:
     Type: String
+  ProjectPrefixLower:
+    Type: String
+    Default: acme
+    Description: Lowercase project prefix used for CloudFormation exports
   AuditEmail:
     Type: String
-    Default: your-email+aws-audit@domain.com
   LogArchiveEmail:
     Type: String
-    Default: your-email+aws-log@domain.com
 
 Resources:
   SecurityOU:
@@ -60,27 +62,27 @@ Outputs:
   SecurityOUId:
     Value: !GetAtt SecurityOU.Id
     Export:
-      Name: SecurityOUId
+      Name: !Sub '${ProjectPrefixLower}-org-SecurityOUId'
 
   InfrastructureOUId:
     Value: !GetAtt InfrastructureOU.Id
     Export:
-      Name: InfrastructureOUId
+      Name: !Sub '${ProjectPrefixLower}-org-InfrastructureOUId'
 
   InfrastructureOUArn:
     Value: !GetAtt InfrastructureOU.Arn
     Export:
-      Name: InfrastructureOUArn
+      Name: !Sub '${ProjectPrefixLower}-org-InfrastructureOUArn'
 
   WorkloadsOUId:
     Value: !GetAtt WorkloadsOU.Id
     Export:
-      Name: WorkloadsOUId
+      Name: !Sub '${ProjectPrefixLower}-org-WorkloadsOUId'
 
   WorkloadsOUArn:
     Value: !GetAtt WorkloadsOU.Arn
     Export:
-      Name: WorkloadsOUArn
+      Name: !Sub '${ProjectPrefixLower}-org-WorkloadsOUArn'
 
   # ==============================================================================
   # Uncomment the following output when the Sandbox OU is required.
@@ -88,14 +90,14 @@ Outputs:
   # SandboxOUArn:
   #   Value: !GetAtt SandboxOU.Arn
   #   Export:
-  #     Name: SandboxOUArn
+  #     Name: !Sub '${ProjectPrefixLower}-org-SandboxOUArn'
 
   AuditAccountId:
     Value: !GetAtt AuditAccount.AccountId
     Export:
-      Name: AuditAccountId
+      Name: !Sub '${ProjectPrefixLower}-org-AuditAccountId'
 
   LogArchiveAccountId:
     Value: !GetAtt LogArchiveAccount.AccountId
     Export:
-      Name: LogArchiveAccountId
+      Name: !Sub '${ProjectPrefixLower}-org-LogArchiveAccountId'
